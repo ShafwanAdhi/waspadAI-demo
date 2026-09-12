@@ -59,4 +59,8 @@ docker compose pull
 docker compose up --build -d
 ```
 
+Log container dibatasi langsung dari `compose.yaml` dengan driver `json-file`,
+`max-size=10m`, dan `max-file=5` untuk setiap service. Pengaturan ini menjaga
+disk VPS agar tidak penuh oleh log aplikasi, Nginx, atau proses build ulang.
+
 Sebelum deploy perubahan, jalankan test backend, lint, typecheck, dan build frontend. Backup `apps/api/.env` di password manager atau secret manager, bukan di repository. Debug trace development hanya in-memory; untuk observability produksi gunakan log terstruktur yang tetap menerapkan redaksi PII.

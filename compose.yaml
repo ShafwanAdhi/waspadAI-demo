@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   api:
     build:
@@ -9,6 +15,7 @@ services:
       DEBUG_TRACE_ENABLED: "false"
     expose:
       - "8001"
+    logging: *default-logging
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/api/health')"]
@@ -27,6 +34,7 @@ services:
       API_ORIGIN: http://api:8001
     expose:
       - "3000"
+    logging: *default-logging
     depends_on:
       api:
         condition: service_healthy
@@ -38,6 +46,7 @@ services:
       - "${HTTP_PORT:-8080}:80"
     volumes:
       - ./infrastructure/nginx/waspadai.conf:/etc/nginx/conf.d/default.conf:ro
+    logging: *default-logging
     depends_on:
       - web
       - api

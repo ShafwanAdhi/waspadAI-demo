@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description:
     "WaspadAI membantu kamu memeriksa informasi mencurigakan, memahami risikonya, dan menentukan langkah berikutnya.",
   icons: {
-    icon: "/images/waspadai-logo.png",
+    icon: "/images/waspadai-favicon.png",
   },
 };
 

@@ -59,6 +59,23 @@ docker compose pull
 docker compose up --build -d
 ```
 
+Untuk deploy perubahan dari laptop Windows ke VPS, gunakan script berikut dari
+root repository lokal:
+
+```powershell
+.\scripts\deploy-waspadai.ps1 -CommitMessage "Jelaskan perubahan singkat"
+```
+
+Script ini akan melakukan `git add -A`, membuat commit jika ada perubahan,
+`git push`, masuk ke VPS lewat SSH, `git pull --ff-only`, rebuild/restart
+Docker dengan `docker compose up --build -d --remove-orphans`, lalu menjalankan
+health check production. Jika ingin membersihkan Docker image lama setelah
+deploy berhasil:
+
+```powershell
+.\scripts\deploy-waspadai.ps1 -CommitMessage "Jelaskan perubahan singkat" -PruneDockerImages
+```
+
 Log container dibatasi langsung dari `compose.yaml` dengan driver `json-file`,
 `max-size=10m`, dan `max-file=5` untuk setiap service. Pengaturan ini menjaga
 disk VPS agar tidak penuh oleh log aplikasi, Nginx, atau proses build ulang.

@@ -1,0 +1,890 @@
+{
+  "evaluated_model": "openai/gpt-oss-20b",
+  "evaluation_kind": "live_stage_level_planner",
+  "metrics": {
+    "case_count": 8,
+    "completed_cases": 6,
+    "schema_validity_rate": 0.75,
+    "classification_accuracy": 0.5,
+    "claim_recall": 0.4091,
+    "claim_precision_proxy": 0.9,
+    "required_domain_recall": 0.5882,
+    "critical_check_recall": 0.5,
+    "retrieval_plan_accuracy": 0.5,
+    "query_usefulness_proxy": 0.375,
+    "escalation_recall": 0.2,
+    "escalation_false_positive_rate": 0.0
+  },
+  "limitations": [
+    "Kasus evaluasi sintetis dan belum mewakili distribusi pengguna produksi.",
+    "Claim precision memakai pencocokan konsep berlabel, bukan penilaian semantik manusia.",
+    "Query usefulness adalah coverage konsep query, bukan keberhasilan live web retrieval.",
+    "Escalation ground truth adalah kebijakan risiko engineering yang perlu ditinjau manusia."
+  ],
+  "results": [
+    {
+      "case_id": "bank_otp_impersonation",
+      "status": "OK",
+      "duration_ms": 1861,
+      "scores": {
+        "classification_correct": false,
+        "required_domains_found": 2,
+        "required_domains_total": 2,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 3,
+          "generated": 1,
+          "matched_expected": 0,
+          "matched_generated": 0,
+          "missing": [
+            "pengirim mengaku sebagai customer service bank",
+            "pengguna diminta mengirim OTP",
+            "rekening diklaim akan diblokir"
+          ]
+        },
+        "critical_checks_found": 2,
+        "critical_checks_total": 3,
+        "missing_critical_checks": [
+          "verifikasi kanal resmi bank"
+        ],
+        "retrieval_checks_passed": 3,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": true,
+          "web_search_actual": true,
+          "missing_domain_rag": [],
+          "factcheck_rag_expected": false,
+          "factcheck_rag_actual": false
+        },
+        "query_concepts_found": 1,
+        "query_concepts_total": 1,
+        "missing_query_concepts": [],
+        "should_escalate": true,
+        "predicted_escalation": true,
+        "escalation_correct": true
+      },
+      "planner_output": {
+        "classification": "FACTUAL_CLAIM",
+        "domains": [
+          "general_information_integrity",
+          "impersonation_phishing_ato"
+        ],
+        "attack_patterns": [
+          "authority_impersonation",
+          "credential_theft",
+          "urgency",
+          "fear"
+        ],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "The message is legitimate and safe.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "HIGH",
+        "potential_financial_risk": true,
+        "potential_identity_impersonation": true,
+        "contains_url": false,
+        "critical_checks": [
+          "Check for OTP request indicator",
+          "Check for authority impersonation",
+          "Check for urgency/fear signals",
+          "Ensure safe action compliance"
+        ],
+        "required_evidence": [
+          "Official bank communication policy",
+          "Verified bank customer service contact info",
+          "Recent phishing incident reports"
+        ],
+        "preferred_sources": [
+          "Official bank website",
+          "Bank Indonesia security advisories",
+          "Anti-phishing authority guidelines"
+        ],
+        "interim_risk": "CRITICAL",
+        "interim_actions": [
+          "DO_NOT_SHARE_SECRET"
+        ],
+        "applied_rule_ids": [
+          "ATO-R004",
+          "GOV-SA002",
+          "ATO-R003",
+          "ATO-AP005",
+          "ATO-AP001",
+          "ATO-Q009",
+          "ATO-Q004",
+          "INF-I005",
+          "INF-I008",
+          "INF-Q004",
+          "INF-R007",
+          "INF-R002"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "impersonation_phishing_ato",
+            "general_information_integrity"
+          ],
+          "community_rag": false,
+          "factcheck_rag": false
+        },
+        "web_queries": [
+          "bank customer service OTP request policy",
+          "phishing OTP request examples",
+          "bank Indonesia phishing guidelines",
+          "authority impersonation bank phishing"
+        ]
+      }
+    },
+    {
+      "case_id": "government_bpjs_apk",
+      "status": "OK",
+      "duration_ms": 2695,
+      "scores": {
+        "classification_correct": false,
+        "required_domains_found": 3,
+        "required_domains_total": 3,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 2,
+          "generated": 2,
+          "matched_expected": 2,
+          "matched_generated": 2,
+          "missing": []
+        },
+        "critical_checks_found": 2,
+        "critical_checks_total": 2,
+        "missing_critical_checks": [],
+        "retrieval_checks_passed": 2,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": true,
+          "web_search_actual": true,
+          "missing_domain_rag": [],
+          "factcheck_rag_expected": false,
+          "factcheck_rag_actual": true
+        },
+        "query_concepts_found": 1,
+        "query_concepts_total": 1,
+        "missing_query_concepts": [],
+        "should_escalate": true,
+        "predicted_escalation": false,
+        "escalation_correct": false
+      },
+      "planner_output": {
+        "classification": "FACTUAL_CLAIM",
+        "domains": [
+          "government_public_service",
+          "general_information_integrity",
+          "impersonation_phishing_ato"
+        ],
+        "attack_patterns": [
+          "authority_impersonation",
+          "malicious_attachment",
+          "urgency"
+        ],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "Petugas BPJS menghubungi saya dari nomor baru dan meminta saya mengunduh serta menginstal file APK untuk memperbarui data kepesertaan.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "claim2",
+            "text": "Prosedur meminta pengunduhan APK untuk memperbarui data kepesertaan BPJS bersifat resmi.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "MEDIUM",
+        "potential_financial_risk": false,
+        "potential_identity_impersonation": true,
+        "contains_url": false,
+        "critical_checks": [
+          "Verifikasi identitas pengirim dengan kontak resmi BPJS",
+          "Konfirmasi saluran resmi BPJS untuk pembaruan data",
+          "Periksa prosedur resmi BPJS untuk pembaruan data kepesertaan",
+          "Verifikasi keaslian APK yang diminta",
+          "Cek saluran distribusi resmi aplikasi BPJS"
+        ],
+        "required_evidence": [
+          "Informasi kontak resmi BPJS",
+          "Dokumentasi prosedur resmi pembaruan data kepesertaan BPJS",
+          "Metode distribusi resmi aplikasi atau APK BPJS",
+          "Situs web atau portal resmi BPJS"
+        ],
+        "preferred_sources": [
+          "BPJS official website (bpjs.go.id)",
+          "BPJS official mobile app",
+          "Ministry of Health official portal",
+          "Reputable Indonesian news outlets"
+        ],
+        "interim_risk": "HIGH",
+        "interim_actions": [
+          "DO_NOT_INSTALL",
+          "Contact official BPJS channel for verification"
+        ],
+        "applied_rule_ids": [
+          "ATO-R006",
+          "GOV-R009",
+          "GOV-Q010",
+          "GOV-Q006",
+          "GOV-I007",
+          "GOV-R002",
+          "GOV-I006",
+          "INF-R019",
+          "INF-R002",
+          "GOV-SA001"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "government_public_service",
+            "general_information_integrity",
+            "impersonation_phishing_ato"
+          ],
+          "community_rag": true,
+          "factcheck_rag": true
+        },
+        "web_queries": [
+          "BPJS official contact number",
+          "BPJS membership update procedure",
+          "BPJS official app download",
+          "BPJS APK official distribution",
+          "BPJS official website membership update",
+          "BPJS official channels for updates"
+        ]
+      }
+    },
+    {
+      "case_id": "numeric_news_without_source",
+      "status": "OK",
+      "duration_ms": 2189,
+      "scores": {
+        "classification_correct": true,
+        "required_domains_found": 1,
+        "required_domains_total": 1,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 1,
+          "generated": 1,
+          "matched_expected": 1,
+          "matched_generated": 1,
+          "missing": []
+        },
+        "critical_checks_found": 2,
+        "critical_checks_total": 2,
+        "missing_critical_checks": [],
+        "retrieval_checks_passed": 3,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": true,
+          "web_search_actual": true,
+          "missing_domain_rag": [],
+          "factcheck_rag_expected": true,
+          "factcheck_rag_actual": true
+        },
+        "query_concepts_found": 1,
+        "query_concepts_total": 1,
+        "missing_query_concepts": [],
+        "should_escalate": false,
+        "predicted_escalation": false,
+        "escalation_correct": true
+      },
+      "planner_output": {
+        "classification": "FACTUAL_CLAIM",
+        "domains": [
+          "general_information_integrity"
+        ],
+        "attack_patterns": [
+          "INF-AP001",
+          "INF-AP003",
+          "INF-AP004",
+          "INF-I008",
+          "INF-R005",
+          "INF-R008",
+          "INF-R007"
+        ],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "Menurut laporan yang diteruskan, angka pengangguran Indonesia turun 50 persen pada 2024.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "MEDIUM",
+        "potential_financial_risk": false,
+        "potential_identity_impersonation": false,
+        "contains_url": false,
+        "critical_checks": [
+          "Verify source authenticity",
+          "Check official statistics for 2024 unemployment",
+          "Confirm methodology and denominator",
+          "Assess plausibility of 50% drop",
+          "Check for recirculation or outdated data"
+        ],
+        "required_evidence": [
+          "Official unemployment statistics for Indonesia 2024",
+          "Methodology documentation for unemployment calculation",
+          "Publication date of the source"
+        ],
+        "preferred_sources": [
+          "Badan Pusat Statistik (BPS)",
+          "World Bank",
+          "OECD",
+          "International Labour Organization (ILO)"
+        ],
+        "interim_risk": "LOW",
+        "interim_actions": [
+          "Ask for the original source"
+        ],
+        "applied_rule_ids": [
+          "INF-AP001",
+          "INF-AP003",
+          "INF-AP004",
+          "INF-I008",
+          "INF-R005",
+          "INF-R008",
+          "INF-R007"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "general_information_integrity"
+          ],
+          "community_rag": false,
+          "factcheck_rag": true
+        },
+        "web_queries": [
+          "Indonesia unemployment rate 2024 BPS",
+          "Indonesia unemployment statistics 2024",
+          "Indonesia labor market 2024 unemployment",
+          "BPS pengangguran 2024",
+          "World Bank Indonesia unemployment 2024"
+        ]
+      }
+    },
+    {
+      "case_id": "old_policy_recirculated",
+      "status": "OK",
+      "duration_ms": 2792,
+      "scores": {
+        "classification_correct": true,
+        "required_domains_found": 2,
+        "required_domains_total": 2,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 2,
+          "generated": 2,
+          "matched_expected": 2,
+          "matched_generated": 2,
+          "missing": []
+        },
+        "critical_checks_found": 2,
+        "critical_checks_total": 2,
+        "missing_critical_checks": [],
+        "retrieval_checks_passed": 1,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": true,
+          "web_search_actual": true,
+          "missing_domain_rag": [
+            "general_information_integrity"
+          ],
+          "factcheck_rag_expected": true,
+          "factcheck_rag_actual": false
+        },
+        "query_concepts_found": 0,
+        "query_concepts_total": 1,
+        "missing_query_concepts": [
+          "kebijakan sekolah terbaru"
+        ],
+        "should_escalate": true,
+        "predicted_escalation": false,
+        "escalation_correct": false
+      },
+      "planner_output": {
+        "classification": "FACTUAL_CLAIM",
+        "domains": [
+          "government_public_service",
+          "general_information_integrity"
+        ],
+        "attack_patterns": [],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "All schools were closed for two weeks as announced by the government in April 2020.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "claim2",
+            "text": "The policy was newly announced by the government today.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "MEDIUM",
+        "potential_financial_risk": false,
+        "potential_identity_impersonation": false,
+        "contains_url": false,
+        "critical_checks": [
+          "Verify temporal validity of the policy announcement",
+          "Confirm policy still in effect as of current date",
+          "Cross‑check official government source for the closure order",
+          "Check for any subsequent updates or reversals"
+        ],
+        "required_evidence": [
+          "Official government announcement or press release about school closures in April 2020",
+          "Official policy documents or legal texts from the Ministry of Education",
+          "Reputable news articles reporting the closure and any updates",
+          "Government website statements or dashboards indicating current school status"
+        ],
+        "preferred_sources": [
+          "Ministry of Education official website (kemdikbud.go.id)",
+          "Government press release portal (berita.kemenag.go.id or similar)",
+          "Reputable Indonesian news outlets (Kompas, Detik, Tempo)"
+        ],
+        "interim_risk": "MEDIUM",
+        "interim_actions": [
+          "Ask for the original source URL or document",
+          "Advise user to verify with official government channels before acting"
+        ],
+        "applied_rule_ids": [
+          "INF-AP004",
+          "GOV-R011",
+          "INF-Q004",
+          "INF-R007",
+          "GOV-R017",
+          "INF-SA002",
+          "INF-I005",
+          "INF-I008",
+          "GOV-I011"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "government_public_service"
+          ],
+          "community_rag": false,
+          "factcheck_rag": false
+        },
+        "web_queries": [
+          "kebijakan penutupan sekolah Indonesia April 2020",
+          "penutupan sekolah Indonesia 2023",
+          "kebijakan pendidikan Indonesia 2023",
+          "kebijakan penutupan sekolah pemerintah Indonesia 2023"
+        ]
+      }
+    },
+    {
+      "case_id": "personal_opinion",
+      "status": "OK",
+      "duration_ms": 2098,
+      "scores": {
+        "classification_correct": true,
+        "required_domains_found": 1,
+        "required_domains_total": 1,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 2,
+          "generated": 2,
+          "matched_expected": 2,
+          "matched_generated": 2,
+          "missing": []
+        },
+        "critical_checks_found": 0,
+        "critical_checks_total": 1,
+        "missing_critical_checks": [
+          "bedakan opini dari klaim faktual"
+        ],
+        "retrieval_checks_passed": 3,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": false,
+          "web_search_actual": false,
+          "missing_domain_rag": [],
+          "factcheck_rag_expected": false,
+          "factcheck_rag_actual": false
+        },
+        "query_concepts_found": 0,
+        "query_concepts_total": 0,
+        "missing_query_concepts": [],
+        "should_escalate": false,
+        "predicted_escalation": false,
+        "escalation_correct": true
+      },
+      "planner_output": {
+        "classification": "OPINION",
+        "domains": [
+          "general_information_integrity"
+        ],
+        "attack_patterns": [],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "layanan transportasi umum di kota ini kurang nyaman",
+            "claim_type": "OPINION",
+            "verifiable": false
+          },
+          {
+            "id": "claim2",
+            "text": "tarifnya terasa terlalu mahal",
+            "claim_type": "OPINION",
+            "verifiable": false
+          }
+        ],
+        "requires_fresh_data": false,
+        "complexity": "SIMPLE",
+        "potential_financial_risk": false,
+        "potential_identity_impersonation": false,
+        "contains_url": false,
+        "critical_checks": [
+          "Check for source authenticity"
+        ],
+        "required_evidence": [],
+        "preferred_sources": [],
+        "interim_risk": "LOW",
+        "interim_actions": [
+          "Tandai source_authenticity=UNVERIFIED",
+          "Ask for the original source"
+        ],
+        "applied_rule_ids": [
+          "INF-R024",
+          "INF-SA002"
+        ],
+        "retrieval_plan": {
+          "web_search": false,
+          "domain_rag": [
+            "general_information_integrity"
+          ],
+          "community_rag": false,
+          "factcheck_rag": false
+        },
+        "web_queries": []
+      }
+    },
+    {
+      "case_id": "explicit_satire",
+      "status": "OK",
+      "duration_ms": 4024,
+      "scores": {
+        "classification_correct": true,
+        "required_domains_found": 1,
+        "required_domains_total": 2,
+        "missing_domains": [
+          "government_public_service"
+        ],
+        "claim_metrics": {
+          "expected": 2,
+          "generated": 2,
+          "matched_expected": 2,
+          "matched_generated": 2,
+          "missing": []
+        },
+        "critical_checks_found": 1,
+        "critical_checks_total": 1,
+        "missing_critical_checks": [],
+        "retrieval_checks_passed": 0,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": false,
+          "web_search_actual": true,
+          "missing_domain_rag": [
+            "government_public_service"
+          ],
+          "factcheck_rag_expected": false,
+          "factcheck_rag_actual": true
+        },
+        "query_concepts_found": 0,
+        "query_concepts_total": 0,
+        "missing_query_concepts": [],
+        "should_escalate": false,
+        "predicted_escalation": false,
+        "escalation_correct": true
+      },
+      "planner_output": {
+        "classification": "SATIRE",
+        "domains": [
+          "general_information_integrity"
+        ],
+        "attack_patterns": [
+          "INF-AP008",
+          "INF-AP001"
+        ],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "Artikel tersebut merupakan satire dan parodi",
+            "claim_type": "OPINION",
+            "verifiable": true
+          },
+          {
+            "id": "claim2",
+            "text": "DPR mengesahkan aturan bahwa warga wajib tidur siang tiga jam setiap hari agar ekonomi tumbuh",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "SIMPLE",
+        "potential_financial_risk": false,
+        "potential_identity_impersonation": false,
+        "contains_url": false,
+        "critical_checks": [
+          "Verifikasi apakah artikel memang satire/parodi",
+          "Verifikasi apakah DPR benar-benar mengesahkan aturan tidur siang tiga jam",
+          "Periksa sumber asli dan metadata publikasi",
+          "Cari konfirmasi independen dari sumber lain"
+        ],
+        "required_evidence": [
+          "Sumber asli artikel (URL, tanggal, byline)",
+          "Catatan legislatif DPR Indonesia terkait kebijakan tidur",
+          "Laporan media terkemuka yang melaporkan kebijakan tersebut"
+        ],
+        "preferred_sources": [
+          "Situs resmi DPR Indonesia",
+          "Berita nasional terkemuka (e.g., Detik, Kompas)",
+          "Sumber pemerintah (press release)"
+        ],
+        "interim_risk": "LOW",
+        "interim_actions": [
+          "Minta URL asli atau dokumen lengkap",
+          "Tandai source_authenticity=UNVERIFIED"
+        ],
+        "applied_rule_ids": [
+          "INF-AP008",
+          "INF-AP001",
+          "INF-R001"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "general_information_integrity"
+          ],
+          "community_rag": false,
+          "factcheck_rag": true
+        },
+        "web_queries": [
+          "Has the Indonesian DPR enacted a law requiring citizens to sleep midday for three hours daily?",
+          "DPR law sleep midday 3 hours",
+          "Indonesian government sleep policy",
+          "satire article DPR sleep policy",
+          "parody DPR sleep law"
+        ]
+      }
+    },
+    {
+      "case_id": "official_deepfake_payment",
+      "status": "ERROR",
+      "duration_ms": 3240,
+      "error_type": "BadRequestError",
+      "error": "Error code: 400 - {'error': {'message': \"Generated JSON does not match the expected schema. Please adjust your prompt. See 'failed_generation' for more details. Error: jsonschema: '' does not validate with /required: missing properties: 'requires_fresh_data', 'complexity', 'potential_financial_risk', 'potential_identity_impersonation', 'contains_url', 'critical_checks', 'required_evidence', 'preferred_sources', 'interim_risk', 'interim_actions', 'applied_rule_ids', 'retrieval_plan', 'web_queries'\", 'type': 'invalid_request_error', 'code': 'json_validate_failed', 'failed_generation': '{\"classification\":\"FACTUAL_CLAIM\",\"domains\":[\"general_information_integrity\",\"impersonation_phishing_ato\"],\"attack_patterns\":[\"payment_diversion\",\"deepfake_impersonation\"],\"claims\":[{\"id\":\"claim1\",\"text\":\"Video shows a minister offering cash assistance.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim2\",\"text\":\"The video is authentic and not a deepfake.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim3\",\"text\":\"The cash assistance program is officially sanctioned by the government.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim4\",\"text\":\"The request to transfer money to a personal account is legitimate and part of the official program.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim5\",\"text\":\"The minister in the video is a real government official.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim6\",\"text\":\"The program is funded by the government budget.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim7\",\"text\":\"The program is not a scam.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"claim8\",\"text\":\"The program uses official channels for communication and payment.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true}]}'}}",
+      "scores": {
+        "classification_correct": false,
+        "required_domains_found": 0,
+        "required_domains_total": 3,
+        "missing_domains": [
+          "general_information_integrity",
+          "government_public_service",
+          "impersonation_phishing_ato"
+        ],
+        "claim_metrics": {
+          "expected": 4,
+          "generated": 0,
+          "matched_expected": 0,
+          "matched_generated": 0,
+          "missing": [
+            "video menampilkan menteri menawarkan bantuan tunai",
+            "video diduga deepfake",
+            "penonton diminta membayar biaya pencairan",
+            "pembayaran diarahkan ke rekening pribadi"
+          ]
+        },
+        "critical_checks_found": 0,
+        "critical_checks_total": 3,
+        "missing_critical_checks": [
+          "verifikasi program pada kanal pemerintah",
+          "periksa autentisitas video",
+          "jangan membayar ke rekening pribadi"
+        ],
+        "retrieval_checks_passed": 0,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "unavailable_because_schema_invalid": true
+        },
+        "query_concepts_found": 0,
+        "query_concepts_total": 2,
+        "missing_query_concepts": [
+          "program bantuan resmi kementerian",
+          "pemeriksaan video deepfake"
+        ],
+        "should_escalate": true,
+        "predicted_escalation": false,
+        "escalation_correct": false
+      }
+    },
+    {
+      "case_id": "multi_claim_government_aid",
+      "status": "ERROR",
+      "duration_ms": 3155,
+      "error_type": "BadRequestError",
+      "error": "Error code: 400 - {'error': {'message': \"Generated JSON does not match the expected schema. Please adjust your prompt. See 'failed_generation' for more details. Error: jsonschema: '' does not validate with /required: missing properties: 'requires_fresh_data', 'complexity', 'potential_financial_risk', 'potential_identity_impersonation', 'contains_url', 'critical_checks', 'required_evidence', 'preferred_sources', 'interim_risk', 'interim_actions', 'applied_rule_ids', 'retrieval_plan', 'web_queries'\", 'type': 'invalid_request_error', 'code': 'json_validate_failed', 'failed_generation': '{\"classification\":\"FACTUAL_CLAIM\",\"domains\":[\"government_public_service\",\"general_information_integrity\",\"impersonation_phishing_ato\"],\"attack_patterns\":[\"authority_impersonation\",\"credential_theft\",\"payment_diversion\",\"urgency\"],\"claims\":[{\"id\":\"C1\",\"text\":\"Kementerian Sosial membuka bantuan Rp5 juta untuk seluruh pemilik KTP mulai hari ini.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"C2\",\"text\":\"Pendaftaran bantuan hanya tersedia selama dua jam melalui tautan WhatsApp.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"C3\",\"text\":\"Penerima harus membayar biaya administrasi Rp150.000 ke rekening atas nama pribadi.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"C4\",\"text\":\"Pesan meminta foto KTP sebagai bagian dari proses verifikasi.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"C5\",\"text\":\"Pesan meminta kode OTP untuk konfirmasi pencairan bantuan.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"C6\",\"text\":\"Link yang dimaksud adalah tautan WhatsApp resmi Kementerian Sosial.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true},{\"id\":\"C7\",\"text\":\"Bantuan ditujukan kepada semua pemilik KTP di Indonesia.\",\"claim_type\":\"FACTUAL_CLAIM\",\"verifiable\":true}]}'}}",
+      "scores": {
+        "classification_correct": false,
+        "required_domains_found": 0,
+        "required_domains_total": 3,
+        "missing_domains": [
+          "general_information_integrity",
+          "government_public_service",
+          "impersonation_phishing_ato"
+        ],
+        "claim_metrics": {
+          "expected": 6,
+          "generated": 0,
+          "matched_expected": 0,
+          "matched_generated": 0,
+          "missing": [
+            "Kemensos diklaim membuka bantuan Rp5 juta",
+            "bantuan diklaim untuk seluruh pemilik KTP",
+            "pendaftaran dibatasi dua jam melalui WhatsApp",
+            "penerima diminta membayar Rp150.000",
+            "pembayaran ke rekening pribadi",
+            "pesan meminta foto KTP dan OTP"
+          ]
+        },
+        "critical_checks_found": 0,
+        "critical_checks_total": 4,
+        "missing_critical_checks": [
+          "verifikasi program bantuan dan nominal",
+          "verifikasi domain dan kanal resmi",
+          "jangan membayar biaya ke rekening pribadi",
+          "jangan membagikan OTP atau KTP"
+        ],
+        "retrieval_checks_passed": 0,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "unavailable_because_schema_invalid": true
+        },
+        "query_concepts_found": 0,
+        "query_concepts_total": 2,
+        "missing_query_concepts": [
+          "program Kemensos Rp5 juta",
+          "kanal resmi pendaftaran bantuan"
+        ],
+        "should_escalate": true,
+        "predicted_escalation": false,
+        "escalation_correct": false
+      }
+    }
+  ],
+  "rate_limit_snapshot": {
+    "mode": "LIVE",
+    "models": [
+      {
+        "model": "qwen/qwen3.6-27b",
+        "roles": [
+          "Vision understanding",
+          "Verifier & response generator"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        }
+      },
+      {
+        "model": "openai/gpt-oss-20b",
+        "roles": [
+          "Investigation planner"
+        ],
+        "observed": true,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        },
+        "observed_at": "2026-09-10T09:54:39.505305+00:00",
+        "status_code": 400,
+        "source": "groq-response-headers",
+        "requests": {
+          "scope": "RPD",
+          "limit": 1000,
+          "remaining": 991,
+          "reset_raw": "12m57.599s",
+          "reset_at": "2026-09-10T10:07:37.104305+00:00",
+          "reset_in_seconds": 778,
+          "window_state": "ACTIVE"
+        },
+        "tokens": {
+          "scope": "TPM",
+          "limit": 8000,
+          "remaining": 2703,
+          "reset_raw": "39.727s",
+          "reset_at": "2026-09-10T09:55:19.232305+00:00",
+          "reset_in_seconds": 40,
+          "window_state": "ACTIVE"
+        },
+        "retry_after_seconds": null,
+        "age_seconds": 0
+      },
+      {
+        "model": "openai/gpt-oss-120b",
+        "roles": [
+          "Planner escalation"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        }
+      },
+      {
+        "model": "groq/compound-mini",
+        "roles": [
+          "Web search"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 250,
+          "tpm": 70000,
+          "tpd": null
+        }
+      },
+      {
+        "model": "groq/compound",
+        "roles": [
+          "High-complexity web search"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 250,
+          "tpm": 70000,
+          "tpd": null
+        }
+      }
+    ],
+    "observed_model_count": 1,
+    "updated_at": "2026-09-10T09:54:39.511432+00:00",
+    "measurement": "passive-response-headers",
+    "reference_plan": "FREE",
+    "reference_source": "https://console.groq.com/docs/rate-limits",
+    "does_not_make_provider_request": true,
+    "scope_notice": "RPM/RPD/TPM/TPD adalah jatah referensi plan. Header aktual hanya memberikan remaining RPD dan TPM. Setelah reset, jatah tetap tampil sementara remaining menunggu respons model berikutnya."
+  }
+}

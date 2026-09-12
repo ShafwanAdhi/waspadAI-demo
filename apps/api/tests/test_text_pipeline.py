@@ -1,0 +1,126 @@
+﻿import asyncio
+from datetime import datetime, timezone
+
+from app.config import Settings
+from app.schemas import (
+    Evidence,
+    PlannedClaim,
+    PlannerOutput,
+    RecommendedAction,
+    RetrievalPlan,
+    VerificationDecision,
+)
+from app.services.pipeline import FactCheckPipeline
+
+
+class FakeGroqService:
+    provider_name = "fake-search"
+    configured = True
+
+    async def plan(self, case, signals, rulebook, escalation=False):
+        assert case.input_type == "TEXT"
+        assert case.safe_text
+        assert "general_information_integrity" in signals.domains
+        assert rulebook.matches
+        return PlannerOutput(
+            classification="FACTUAL_CLAIM",
+            domains=signals.domains,
+            attack_patterns=signals.attack_patterns,
+            claims=[
+                PlannedClaim(
+                    id="claim_1",
+                    text="Pemerintah memberikan bantuan Rp5 juta",
+                    claim_type="FACTUAL",
+                    verifiable=True,
+                )
+            ],
+            requires_fresh_data=True,
+            complexity="SIMPLE",
+            potential_financial_risk=False,
+            potential_identity_impersonation=False,
+            contains_url=False,
+            critical_checks=["official_program_check"],
+            required_evidence=["current official program information"],
+            preferred_sources=["responsible agency"],
+            interim_risk="UNKNOWN",
+            interim_actions=rulebook.forced_actions,
+            applied_rule_ids=[item.rule_id for item in rulebook.matches[:4]],
+            retrieval_plan=RetrievalPlan(
+                web_search=True,
+                domain_rag=[],
+                community_rag=True,
+                factcheck_rag=True,
+            ),
+            web_queries=["bantuan pemerintah Rp5 juta"],
+        )
+
+    async def search(self, planner):
+        return [
+            Evidence(
+                id="web_1",
+                claim_id="claim_1",
+                source_type="government",
+                publisher="Instansi Resmi",
+                title="Informasi program resmi",
+                url="https://example.go.id/program",
+                published_at="2026-08-20",
+                retrieved_at=datetime.now(timezone.utc).isoformat(),
+                excerpt="Daftar program resmi yang berlaku.",
+                relevance=0.91,
+                authority=1.0,
+                recency=0.98,
+                stance="REFUTES",
+                verification_status="VERIFIED",
+            )
+        ]
+
+    async def verify_and_generate(self, planner, evidence, sufficiency, rulebook):
+        return VerificationDecision(
+            claims=[],
+            overall_verdict="UNVERIFIED" if sufficiency < 0.58 else "REFUTED",
+            risk_level="LOW",
+            evidence_sufficiency=sufficiency,
+            requires_human_review=sufficiency < 0.58,
+            headline="Pemeriksaan teks selesai",
+            what_checked=[planner.claims[0].text],
+            why=["Evidence dipetakan ke klaim atomik."],
+            recommended_actions=[
+                RecommendedAction(
+                    code="VERIFY_VIA_OFFICIAL_CHANNEL",
+                    title="Periksa sumber resmi",
+                    detail="Bandingkan dengan kanal instansi terkait.",
+                )
+            ],
+            uncertainty="Origin teks tempel tidak dapat diautentikasi tanpa URL sumber.",
+        )
+
+
+def test_live_text_uses_the_shared_rulebook_evidence_and_verifier_pipeline():
+    pipeline = FactCheckPipeline(Settings(groq_api_key="test-key"))
+    fake = FakeGroqService()
+    pipeline.groq = fake
+    pipeline.web_search = fake
+
+    response = asyncio.run(
+        pipeline.verify_text(
+            text="Pemerintah disebut memberikan bantuan Rp5 juta pada tahun 2026.",
+            question="Apakah kabar ini benar?",
+            source_url=None,
+            sender_context="FORWARDED",
+        )
+    )
+
+    assert response.mode == "LIVE"
+    assert response.input_summary.input_type == "TEXT"
+    assert response.input_summary.content_type == "FORWARDED_MESSAGE"
+    assert response.dimensions.source_authenticity == "UNVERIFIED"
+    assert response.dimensions.content_authenticity == "NOT_APPLICABLE"
+    assert [stage.key for stage in response.pipeline] == [
+        "extraction",
+        "rulebook",
+        "planning",
+        "retrieval",
+        "verification",
+    ]
+    assert response.rulebook.selected_count > 0
+    assert response.evidence

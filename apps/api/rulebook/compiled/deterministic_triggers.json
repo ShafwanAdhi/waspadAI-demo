@@ -1,0 +1,387 @@
+[
+  {
+    "trigger_id": "ATO-DT001",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "all": [
+        {
+          "field": "secret_request_detected",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "secret_type",
+          "operator": "eq",
+          "value": "OTP"
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "ATO-R004"
+    ],
+    "force_actions": [
+      "DO_NOT_SHARE_SECRET"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT002",
+    "stage": "POST_ACTION_STATE",
+    "condition": {
+      "field": "user_action_state",
+      "operator": "eq",
+      "value": "OTP_SHARED"
+    },
+    "force_rule_ids": [
+      "ATO-R022"
+    ],
+    "force_actions": [
+      "CONTACT_PROVIDER_VIA_OFFICIAL_CHANNEL",
+      "CHECK_UNAUTHORIZED_ACTIVITY"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT003",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "all": [
+        {
+          "field": "secret_request_detected",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "secret_type",
+          "operator": "in",
+          "value": [
+            "PIN",
+            "PASSWORD",
+            "CVV",
+            "RECOVERY_CODE",
+            "SEED_PHRASE",
+            "PRIVATE_KEY"
+          ]
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "ATO-R003",
+      "ATO-R004"
+    ],
+    "force_actions": [
+      "DO_NOT_SHARE_SECRET"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT004",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "field": "suspicious_executable_received",
+      "operator": "eq",
+      "value": true
+    },
+    "force_rule_ids": [
+      "ATO-R006"
+    ],
+    "force_actions": [
+      "DO_NOT_INSTALL"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT005",
+    "stage": "POST_ACTION_STATE",
+    "condition": {
+      "field": "user_action_state",
+      "operator": "eq",
+      "value": "APK_INSTALLED"
+    },
+    "force_rule_ids": [
+      "ATO-R019",
+      "ATO-R023"
+    ],
+    "force_actions": [
+      "START_DEVICE_COMPROMISE_RESPONSE"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT006",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "any": [
+        {
+          "field": "remote_access_requested",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "screen_share_requested",
+          "operator": "eq",
+          "value": true
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "ATO-R007"
+    ],
+    "force_actions": [
+      "DO_NOT_GRANT_REMOTE_ACCESS"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT007",
+    "stage": "POST_ACTION_STATE",
+    "condition": {
+      "field": "user_action_state",
+      "operator": "eq",
+      "value": "REMOTE_ACCESS_GRANTED"
+    },
+    "force_rule_ids": [
+      "ATO-R019",
+      "ATO-R024"
+    ],
+    "force_actions": [
+      "TERMINATE_REMOTE_SESSION",
+      "START_DEVICE_COMPROMISE_RESPONSE"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT008",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "field": "safe_account_transfer_requested",
+      "operator": "eq",
+      "value": true
+    },
+    "force_rule_ids": [
+      "ATO-R018"
+    ],
+    "force_actions": [
+      "DO_NOT_TRANSFER",
+      "CONTACT_PROVIDER_VIA_OFFICIAL_CHANNEL"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT009",
+    "stage": "POST_ACTION_STATE",
+    "condition": {
+      "field": "user_action_state",
+      "operator": "eq",
+      "value": "PAYMENT_SENT"
+    },
+    "force_rule_ids": [
+      "ATO-R019",
+      "ATO-R025"
+    ],
+    "force_actions": [
+      "CONTACT_BANK_OR_PJP",
+      "REPORT_TO_IASC",
+      "PRESERVE_EVIDENCE"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT010",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "field": "synthetic_media_possible",
+      "operator": "eq",
+      "value": true
+    },
+    "force_rule_ids": [
+      "ATO-R014",
+      "ATO-R015"
+    ],
+    "force_actions": [
+      "VERIFY_IDENTITY_OUT_OF_BAND"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT011",
+    "stage": "POST_RETRIEVAL_GUARDRAIL",
+    "condition": {
+      "field": "reputation_result",
+      "operator": "eq",
+      "value": "NO_KNOWN_REPORT"
+    },
+    "force_rule_ids": [
+      "ATO-R029"
+    ],
+    "force_actions": [
+      "DO_NOT_LABEL_SAFE_FROM_NO_HIT"
+    ]
+  },
+  {
+    "trigger_id": "ATO-DT012",
+    "stage": "POST_RETRIEVAL_GUARDRAIL",
+    "condition": {
+      "all": [
+        {
+          "field": "evidence_sufficiency_low",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "domains",
+          "operator": "contains",
+          "value": "impersonation_phishing_ato"
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "ATO-R035"
+    ],
+    "force_actions": [
+      "RETURN_UNVERIFIED"
+    ]
+  },
+  {
+    "trigger_id": "GOV-DT001",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "all": [
+        {
+          "field": "government_context",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "secret_request_detected",
+          "operator": "eq",
+          "value": true
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "GOV-R008",
+      "ATO-R003",
+      "ATO-R004"
+    ],
+    "force_actions": [
+      "DO_NOT_SHARE_SECRET"
+    ]
+  },
+  {
+    "trigger_id": "GOV-DT002",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "all": [
+        {
+          "field": "government_context",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "suspicious_executable_received",
+          "operator": "eq",
+          "value": true
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "GOV-R009",
+      "ATO-R006"
+    ],
+    "force_actions": [
+      "DO_NOT_INSTALL"
+    ]
+  },
+  {
+    "trigger_id": "GOV-DT003",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "all": [
+        {
+          "field": "government_context",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "payment_requested",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "any": [
+            {
+              "field": "payment_destination_type",
+              "operator": "eq",
+              "value": "PERSONAL"
+            },
+            {
+              "field": "beneficiary_status",
+              "operator": "in",
+              "value": [
+                "UNVERIFIED",
+                "MISMATCH"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "GOV-R010",
+      "GOV-R025"
+    ],
+    "force_actions": [
+      "VERIFY_PAYMENT_REASON_CHANNEL_AND_BENEFICIARY"
+    ]
+  },
+  {
+    "trigger_id": "GOV-DT004",
+    "stage": "PRE_RETRIEVAL_SIGNAL",
+    "condition": {
+      "all": [
+        {
+          "field": "government_context",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "authority",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "threat",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "sensitive_action_requested",
+          "operator": "eq",
+          "value": true
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "GOV-R012"
+    ],
+    "force_actions": [
+      "PAUSE_SENSITIVE_ACTION",
+      "VERIFY_VIA_OFFICIAL_CHANNEL"
+    ]
+  },
+  {
+    "trigger_id": "INF-DT001",
+    "stage": "POST_RETRIEVAL_GUARDRAIL",
+    "condition": {
+      "all": [
+        {
+          "field": "evidence_sufficiency_low",
+          "operator": "eq",
+          "value": true
+        },
+        {
+          "field": "domains",
+          "operator": "contains",
+          "value": "general_information_integrity"
+        }
+      ]
+    },
+    "force_rule_ids": [
+      "INF-R014"
+    ],
+    "force_actions": [
+      "RETURN_UNVERIFIED"
+    ]
+  }
+]

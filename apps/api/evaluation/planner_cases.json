@@ -1,0 +1,274 @@
+[
+  {
+    "case_id": "bank_otp_impersonation",
+    "text": "Saya dari customer service bank. Untuk mencegah rekening diblokir, kirimkan kode OTP sekarang melalui WhatsApp ini.",
+    "question": "Apakah pesan ini benar dan aman?",
+    "sender_context": "UNKNOWN_NUMBER",
+    "expected": {
+      "classifications": ["SCAM_MESSAGE"],
+      "required_domains": ["general_information_integrity", "impersonation_phishing_ato"],
+      "claims": [
+        {
+          "label": "pengirim mengaku sebagai customer service bank",
+          "slots": [["customer service", "cs"], ["bank"]]
+        },
+        {
+          "label": "pengguna diminta mengirim OTP",
+          "slots": [["otp"], ["kirim", "beri", "bagikan", "minta"]]
+        },
+        {
+          "label": "rekening diklaim akan diblokir",
+          "slots": [["rekening", "akun"], ["blokir", "diblokir"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "verifikasi identitas pengirim", "slots": [["identitas", "pengirim", "impersonation"]]},
+        {"label": "periksa permintaan OTP", "slots": [["otp"]]},
+        {"label": "verifikasi kanal resmi bank", "slots": [["kanal", "saluran", "situs", "nomor"], ["resmi", "official"]]}
+      ],
+      "web_search": true,
+      "domain_rag": ["impersonation_phishing_ato"],
+      "factcheck_rag": false,
+      "query_concepts": [
+        {"label": "panduan resmi bank/OJK tentang OTP", "slots": [["otp"], ["bank", "ojk"]]}
+      ],
+      "should_escalate": true
+    }
+  },
+  {
+    "case_id": "government_bpjs_apk",
+    "text": "Petugas BPJS menghubungi saya dari nomor baru. Saya diminta segera mengunduh dan menginstal file APK untuk memperbarui data kepesertaan.",
+    "question": "Apakah prosedur ini resmi?",
+    "sender_context": "UNKNOWN_NUMBER",
+    "expected": {
+      "classifications": ["SCAM_MESSAGE"],
+      "required_domains": ["general_information_integrity", "government_public_service", "impersonation_phishing_ato"],
+      "claims": [
+        {
+          "label": "pengirim mengaku sebagai petugas BPJS",
+          "slots": [["bpjs"], ["petugas", "mengaku", "pengirim"]]
+        },
+        {
+          "label": "APK diklaim untuk pembaruan data",
+          "slots": [["apk"], ["data", "kepesertaan", "pembaruan"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "verifikasi identitas dan kanal BPJS", "slots": [["bpjs"], ["resmi", "identitas", "kanal"]]},
+        {"label": "periksa keaslian dan sumber APK", "slots": [["apk"], ["asli", "autentisitas", "sumber", "distribusi"]]}
+      ],
+      "web_search": true,
+      "domain_rag": ["government_public_service", "impersonation_phishing_ato"],
+      "factcheck_rag": false,
+      "query_concepts": [
+        {"label": "kanal resmi BPJS dan peringatan APK", "slots": [["bpjs"], ["apk", "aplikasi"], ["resmi", "penipuan", "peringatan"]]}
+      ],
+      "should_escalate": true
+    }
+  },
+  {
+    "case_id": "numeric_news_without_source",
+    "text": "Menurut laporan yang diteruskan, angka pengangguran Indonesia turun 50 persen pada 2024. Tidak ada tautan atau nama laporan yang disertakan.",
+    "question": "Apakah angka ini benar?",
+    "sender_context": "FORWARDED",
+    "expected": {
+      "classifications": ["FACTUAL_CLAIM"],
+      "required_domains": ["general_information_integrity"],
+      "claims": [
+        {
+          "label": "pengangguran Indonesia turun 50 persen pada 2024",
+          "slots": [["pengangguran"], ["indonesia"], ["50", "lima puluh"], ["2024"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "cek sumber primer statistik", "slots": [["bps", "statistik", "sumber primer", "laporan asli"]]},
+        {"label": "cek definisi dan periode angka", "slots": [["periode", "tahun", "2024", "tanggal"], ["definisi", "metodologi", "basis", "angka"]]}
+      ],
+      "web_search": true,
+      "domain_rag": ["general_information_integrity"],
+      "factcheck_rag": true,
+      "query_concepts": [
+        {"label": "statistik pengangguran Indonesia 2024", "slots": [["pengangguran"], ["indonesia"], ["2024"], ["bps", "statistik"]]}
+      ],
+      "should_escalate": false
+    }
+  },
+  {
+    "case_id": "old_policy_recirculated",
+    "text": "Sebuah berita bertanggal April 2020 menyatakan semua sekolah akan ditutup selama dua minggu. Berita itu dibagikan kembali hari ini dengan caption bahwa kebijakan tersebut baru diumumkan pemerintah.",
+    "question": "Apakah berita lama ini masih berlaku sekarang?",
+    "sender_context": "SOCIAL_MEDIA",
+    "expected": {
+      "classifications": ["FACTUAL_CLAIM"],
+      "required_domains": ["general_information_integrity", "government_public_service"],
+      "claims": [
+        {
+          "label": "berita April 2020 menyatakan sekolah ditutup dua minggu",
+          "slots": [["2020"], ["sekolah"], ["tutup", "ditutup"], ["dua minggu", "2 minggu"]]
+        },
+        {
+          "label": "caption mengklaim kebijakan baru diumumkan",
+          "slots": [["baru", "hari ini", "sekarang"], ["umum", "diumumkan", "kebijakan"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "bandingkan tanggal publikasi dan tanggal klaim", "slots": [["tanggal", "waktu", "temporal"], ["2020", "lama", "sekarang"]]},
+        {"label": "cek pengumuman pemerintah terkini", "slots": [["pemerintah", "otoritas"], ["terkini", "terbaru", "resmi", "sekarang"]]}
+      ],
+      "web_search": true,
+      "domain_rag": ["general_information_integrity", "government_public_service"],
+      "factcheck_rag": true,
+      "query_concepts": [
+        {"label": "kebijakan sekolah terbaru", "slots": [["sekolah"], ["kebijakan", "pengumuman"], ["terbaru", "sekarang", "2026"]]}
+      ],
+      "should_escalate": true
+    }
+  },
+  {
+    "case_id": "personal_opinion",
+    "text": "Menurut saya layanan transportasi umum di kota ini kurang nyaman dan tarifnya terasa terlalu mahal.",
+    "question": "Apakah pendapat ini termasuk hoaks?",
+    "sender_context": "KNOWN_CONTACT",
+    "expected": {
+      "classifications": ["OPINION"],
+      "required_domains": ["general_information_integrity"],
+      "claims": [
+        {
+          "label": "layanan transportasi dianggap kurang nyaman",
+          "slots": [["transportasi"], ["kurang nyaman", "tidak nyaman"]]
+        },
+        {
+          "label": "tarif dianggap terlalu mahal",
+          "slots": [["tarif"], ["mahal"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "bedakan opini dari klaim faktual", "slots": [["opini", "pendapat", "subjektif"]]}
+      ],
+      "web_search": false,
+      "domain_rag": ["general_information_integrity"],
+      "factcheck_rag": false,
+      "query_concepts": [],
+      "should_escalate": false
+    }
+  },
+  {
+    "case_id": "explicit_satire",
+    "text": "Ini artikel satire dan parodi: DPR mengesahkan aturan bahwa warga wajib tidur siang tiga jam setiap hari agar ekonomi tumbuh.",
+    "question": "Apakah ini berita sungguhan?",
+    "sender_context": "SOCIAL_MEDIA",
+    "expected": {
+      "classifications": ["SATIRE"],
+      "required_domains": ["general_information_integrity", "government_public_service"],
+      "claims": [
+        {
+          "label": "artikel secara eksplisit menyatakan dirinya satire",
+          "slots": [["satire", "parodi"]]
+        },
+        {
+          "label": "DPR diklaim mengesahkan aturan tidur siang tiga jam",
+          "slots": [["dpr"], ["tidur siang"], ["tiga jam", "3 jam"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "periksa label satire dan konteks penerbit", "slots": [["satire", "parodi"], ["label", "konteks", "penerbit", "sumber", "metadata"]]}
+      ],
+      "web_search": false,
+      "domain_rag": ["general_information_integrity", "government_public_service"],
+      "factcheck_rag": false,
+      "query_concepts": [],
+      "should_escalate": false
+    }
+  },
+  {
+    "case_id": "official_deepfake_payment",
+    "text": "Video di media sosial memperlihatkan seorang menteri menawarkan bantuan tunai. Narasi menyebut videonya mungkin deepfake, tetapi penonton tetap diminta transfer biaya pencairan ke rekening pribadi dan menghubungi WhatsApp.",
+    "question": "Apakah video dan program bantuan ini asli?",
+    "sender_context": "SOCIAL_MEDIA",
+    "expected": {
+      "classifications": ["SCAM_MESSAGE", "FACTUAL_CLAIM"],
+      "required_domains": ["general_information_integrity", "government_public_service", "impersonation_phishing_ato"],
+      "claims": [
+        {
+          "label": "video menampilkan menteri menawarkan bantuan tunai",
+          "slots": [["menteri"], ["bantuan"], ["video"]]
+        },
+        {
+          "label": "video diduga deepfake",
+          "slots": [["deepfake", "sintetis", "manipulasi"]]
+        },
+        {
+          "label": "penonton diminta membayar biaya pencairan",
+          "slots": [["biaya", "transfer", "bayar"], ["pencairan"]]
+        },
+        {
+          "label": "pembayaran diarahkan ke rekening pribadi",
+          "slots": [["rekening"], ["pribadi", "personal"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "verifikasi program pada kanal pemerintah", "slots": [["program", "bantuan"], ["resmi", "pemerintah", "kementerian"]]},
+        {"label": "periksa autentisitas video", "slots": [["video", "media"], ["deepfake", "autentisitas", "manipulasi", "forensik"]]},
+        {"label": "jangan membayar ke rekening pribadi", "slots": [["rekening", "pembayaran", "transfer"], ["pribadi", "personal", "jangan"]]}
+      ],
+      "web_search": true,
+      "domain_rag": ["government_public_service", "impersonation_phishing_ato"],
+      "factcheck_rag": true,
+      "query_concepts": [
+        {"label": "program bantuan resmi kementerian", "slots": [["bantuan"], ["menteri", "kementerian", "pemerintah"], ["resmi", "program"]]},
+        {"label": "pemeriksaan video deepfake", "slots": [["deepfake", "video"], ["menteri"]]}
+      ],
+      "should_escalate": true
+    }
+  },
+  {
+    "case_id": "multi_claim_government_aid",
+    "text": "Pesan berantai menyebut Kementerian Sosial membuka bantuan Rp5 juta untuk seluruh pemilik KTP mulai hari ini. Pendaftaran disebut hanya tersedia selama dua jam melalui tautan WhatsApp, lalu penerima harus membayar biaya administrasi Rp150.000 ke rekening atas nama pribadi. Pesan juga meminta foto KTP dan kode OTP untuk konfirmasi pencairan.",
+    "question": "Tolong periksa semua klaim dan risiko dalam pesan ini.",
+    "sender_context": "FORWARDED",
+    "expected": {
+      "classifications": ["SCAM_MESSAGE"],
+      "required_domains": ["general_information_integrity", "government_public_service", "impersonation_phishing_ato"],
+      "claims": [
+        {
+          "label": "Kemensos diklaim membuka bantuan Rp5 juta",
+          "slots": [["kemensos", "kementerian sosial"], ["bantuan"], ["5 juta", "rp5", "rp 5"]]
+        },
+        {
+          "label": "bantuan diklaim untuk seluruh pemilik KTP",
+          "slots": [["ktp"], ["seluruh", "semua", "pemilik"]]
+        },
+        {
+          "label": "pendaftaran dibatasi dua jam melalui WhatsApp",
+          "slots": [["dua jam", "2 jam"], ["whatsapp", "wa"]]
+        },
+        {
+          "label": "penerima diminta membayar Rp150.000",
+          "slots": [["150", "seratus lima puluh"], ["biaya", "bayar", "transfer"]]
+        },
+        {
+          "label": "pembayaran ke rekening pribadi",
+          "slots": [["rekening"], ["pribadi", "personal"]]
+        },
+        {
+          "label": "pesan meminta foto KTP dan OTP",
+          "slots": [["ktp"], ["otp"], ["foto", "minta", "meminta"]]
+        }
+      ],
+      "critical_checks": [
+        {"label": "verifikasi program bantuan dan nominal", "slots": [["bantuan"], ["nominal", "5 juta", "rp5"], ["resmi", "kemensos"]]},
+        {"label": "verifikasi domain dan kanal resmi", "slots": [["kanal", "tautan", "url", "domain", "whatsapp"], ["resmi", "official"]]},
+        {"label": "jangan membayar biaya ke rekening pribadi", "slots": [["rekening", "transfer", "pembayaran"], ["pribadi", "personal"]]},
+        {"label": "jangan membagikan OTP atau KTP", "slots": [["otp"], ["ktp", "identitas", "data pribadi"]]}
+      ],
+      "web_search": true,
+      "domain_rag": ["government_public_service", "impersonation_phishing_ato"],
+      "factcheck_rag": true,
+      "query_concepts": [
+        {"label": "program Kemensos Rp5 juta", "slots": [["kemensos", "kementerian sosial"], ["5 juta", "rp5"], ["bantuan"]]},
+        {"label": "kanal resmi pendaftaran bantuan", "slots": [["bantuan"], ["pendaftaran", "daftar"], ["resmi", "kemensos"]]}
+      ],
+      "should_escalate": true
+    }
+  }
+]

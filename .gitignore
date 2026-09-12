@@ -1,0 +1,29 @@
+# Secrets (examples remain versioned)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python
+.venv/
+**/__pycache__/
+*.py[cod]
+**/.pytest_cache/
+.coverage
+htmlcov/
+
+# Next.js / Node
+**/node_modules/
+**/.next/
+**/out/
+**/*.tsbuildinfo
+**/.playwright-cli/
+**/output/
+
+# Editors and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local artifacts
+artifacts/

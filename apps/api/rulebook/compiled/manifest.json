@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "rulebooks": [
+    {
+      "rulebook_id": "RB-INF-001",
+      "domain": "general_information_integrity",
+      "version": "1.0.0",
+      "status": "canonical",
+      "country": "ID",
+      "language": "id",
+      "last_reviewed": "2026-08-23"
+    },
+    {
+      "rulebook_id": "RB-GOV-001",
+      "domain": "government_public_service",
+      "version": "1.2.0",
+      "status": "canonical",
+      "country": "ID",
+      "language": "id",
+      "last_reviewed": "2026-08-23"
+    },
+    {
+      "rulebook_id": "RB-ATO-001",
+      "domain": "impersonation_phishing_ato",
+      "version": "1.2.0",
+      "status": "canonical",
+      "country": "ID",
+      "language": "id",
+      "last_reviewed": "2026-08-23"
+    }
+  ],
+  "source_files": [
+    {
+      "name": "rulebook_general_information_integrity.txt",
+      "sha256": "c38698c7376f65a337f17a502882068ab4873c960d84b35070fe3ed4daf7b343"
+    },
+    {
+      "name": "rulebook_government_public_service.txt",
+      "sha256": "20e680f1e3a81a3059e729de5d7204d5b8f5c20004735edadbb1f87052a121c2"
+    },
+    {
+      "name": "rulebook_impersonation_phishing_ato.txt",
+      "sha256": "67bf2dd5d4c4c0d7c8acb32968e3d2f13c9f3dc8be78a342620f795a516fd5fa"
+    },
+    {
+      "name": "deterministic_triggers.json",
+      "sha256": "954294d481c40594eb3854c9994c62b977735985855375047b35c0b02906b3fc"
+    }
+  ],
+  "rule_count": 255,
+  "source_count": 18,
+  "deterministic_trigger_count": 17,
+  "separation_invariant": "RULE_CONTEXT_IS_NOT_EVIDENCE"
+}

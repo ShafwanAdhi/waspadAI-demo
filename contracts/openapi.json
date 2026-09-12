@@ -1,0 +1,837 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WaspadAI API",
+    "description": "API pemeriksaan multimodal berbasis bukti dan rulebook.",
+    "version": "0.6.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Api Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verify/image": {
+      "post": {
+        "summary": "Verify Image",
+        "operationId": "verify_image_api_v1_verify_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_verify_image_api_v1_verify_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/verify/text": {
+      "post": {
+        "summary": "Verify Text",
+        "operationId": "verify_text_api_v1_verify_text_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextVerificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AssessmentDimensions": {
+        "properties": {
+          "factual_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "SUPPORTED",
+                  "REFUTED",
+                  "MISLEADING",
+                  "PARTLY_TRUE",
+                  "OUTDATED",
+                  "UNVERIFIED",
+                  "SATIRE",
+                  "OPINION"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "NOT_APPLICABLE"
+              }
+            ],
+            "title": "Factual Status"
+          },
+          "source_authenticity": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "UNVERIFIED",
+              "SUSPICIOUS",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Source Authenticity"
+          },
+          "sender_identity": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "UNVERIFIED",
+              "IMPERSONATION_LIKELY",
+              "IMPERSONATION_CONFIRMED",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Sender Identity"
+          },
+          "channel_status": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "UNVERIFIED",
+              "SUSPICIOUS",
+              "MALICIOUS",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Channel Status"
+          },
+          "scam_risk": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ],
+            "title": "Scam Risk"
+          },
+          "content_authenticity": {
+            "type": "string",
+            "enum": [
+              "ORIGINAL",
+              "ALTERED",
+              "SYNTHETIC",
+              "UNVERIFIED",
+              "NOT_APPLICABLE"
+            ],
+            "title": "Content Authenticity"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "factual_status",
+          "source_authenticity",
+          "sender_identity",
+          "channel_status",
+          "scam_risk",
+          "content_authenticity"
+        ],
+        "title": "AssessmentDimensions"
+      },
+      "Body_verify_image_api_v1_verify_image_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "default": "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_verify_image_api_v1_verify_image_post"
+      },
+      "Evidence": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "claim_id": {
+            "type": "string",
+            "title": "Claim Id"
+          },
+          "source_type": {
+            "type": "string",
+            "title": "Source Type"
+          },
+          "publisher": {
+            "type": "string",
+            "title": "Publisher"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "title": "Retrieved At"
+          },
+          "excerpt": {
+            "type": "string",
+            "title": "Excerpt"
+          },
+          "relevance": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Relevance"
+          },
+          "authority": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Authority"
+          },
+          "recency": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Recency"
+          },
+          "stance": {
+            "type": "string",
+            "enum": [
+              "SUPPORTS",
+              "REFUTES",
+              "CONTEXT",
+              "UNKNOWN"
+            ],
+            "title": "Stance"
+          },
+          "verification_status": {
+            "type": "string",
+            "enum": [
+              "VERIFIED",
+              "REVIEWED",
+              "UNVERIFIED"
+            ],
+            "title": "Verification Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "claim_id",
+          "source_type",
+          "publisher",
+          "title",
+          "url",
+          "published_at",
+          "retrieved_at",
+          "excerpt",
+          "relevance",
+          "authority",
+          "recency",
+          "stance",
+          "verification_status"
+        ],
+        "title": "Evidence"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InputSummary": {
+        "properties": {
+          "input_type": {
+            "type": "string",
+            "enum": [
+              "IMAGE",
+              "TEXT"
+            ],
+            "title": "Input Type"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "media_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Media Type"
+          },
+          "dimensions": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dimensions"
+          },
+          "extraction_status": {
+            "type": "string",
+            "title": "Extraction Status"
+          },
+          "excerpt": {
+            "type": "string",
+            "title": "Excerpt"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "sender_context": {
+            "type": "string",
+            "enum": [
+              "NOT_APPLICABLE",
+              "UNKNOWN_NUMBER",
+              "KNOWN_CONTACT",
+              "FORWARDED",
+              "SOCIAL_MEDIA",
+              "UNKNOWN"
+            ],
+            "title": "Sender Context"
+          },
+          "character_count": {
+            "type": "integer",
+            "title": "Character Count"
+          },
+          "urls_detected": {
+            "type": "integer",
+            "title": "Urls Detected"
+          },
+          "pii_types_redacted": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pii Types Redacted"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "input_type",
+          "content_type",
+          "label",
+          "media_type",
+          "dimensions",
+          "extraction_status",
+          "excerpt",
+          "source_url",
+          "sender_context",
+          "character_count",
+          "urls_detected",
+          "pii_types_redacted"
+        ],
+        "title": "InputSummary"
+      },
+      "PipelineStage": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "SKIPPED",
+              "FALLBACK"
+            ],
+            "title": "Status"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "title": "Duration Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "status",
+          "detail",
+          "duration_ms"
+        ],
+        "title": "PipelineStage"
+      },
+      "RecommendedAction": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "detail"
+        ],
+        "title": "RecommendedAction"
+      },
+      "RulebookTrace": {
+        "properties": {
+          "corpus_versions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Corpus Versions"
+          },
+          "retrieval_mode": {
+            "type": "string",
+            "title": "Retrieval Mode"
+          },
+          "candidate_count": {
+            "type": "integer",
+            "title": "Candidate Count"
+          },
+          "selected_count": {
+            "type": "integer",
+            "title": "Selected Count"
+          },
+          "forced_rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Forced Rule Ids"
+          },
+          "cache_hit": {
+            "type": "boolean",
+            "title": "Cache Hit"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "title": "Duration Ms"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "corpus_versions",
+          "retrieval_mode",
+          "candidate_count",
+          "selected_count",
+          "forced_rule_ids",
+          "cache_hit",
+          "duration_ms"
+        ],
+        "title": "RulebookTrace"
+      },
+      "SourceView": {
+        "properties": {
+          "publisher": {
+            "type": "string",
+            "title": "Publisher"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "publisher",
+          "title",
+          "url",
+          "published_at"
+        ],
+        "title": "SourceView"
+      },
+      "TextVerificationRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 25000,
+            "minLength": 10,
+            "title": "Text"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Question",
+            "default": "Apakah isi teks ini benar dan aman ditindaklanjuti?"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "sender_context": {
+            "type": "string",
+            "enum": [
+              "NOT_APPLICABLE",
+              "UNKNOWN_NUMBER",
+              "KNOWN_CONTACT",
+              "FORWARDED",
+              "SOCIAL_MEDIA",
+              "UNKNOWN"
+            ],
+            "title": "Sender Context",
+            "default": "UNKNOWN"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "TextVerificationRequest"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "VerificationResponse": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "trace_id": {
+            "type": "string",
+            "title": "Trace Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "COMPLETED",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "const": "LIVE",
+            "title": "Mode"
+          },
+          "mode_notice": {
+            "type": "string",
+            "title": "Mode Notice"
+          },
+          "input_summary": {
+            "$ref": "#/components/schemas/InputSummary"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "SUPPORTED",
+              "REFUTED",
+              "MISLEADING",
+              "PARTLY_TRUE",
+              "OUTDATED",
+              "UNVERIFIED",
+              "SATIRE",
+              "OPINION"
+            ],
+            "title": "Verdict"
+          },
+          "risk_level": {
+            "type": "string",
+            "enum": [
+              "CRITICAL",
+              "HIGH",
+              "MEDIUM",
+              "LOW",
+              "UNKNOWN"
+            ],
+            "title": "Risk Level"
+          },
+          "dimensions": {
+            "$ref": "#/components/schemas/AssessmentDimensions"
+          },
+          "headline": {
+            "type": "string",
+            "title": "Headline"
+          },
+          "evidence_sufficiency": {
+            "type": "number",
+            "title": "Evidence Sufficiency"
+          },
+          "evidence_sufficiency_label": {
+            "type": "string",
+            "title": "Evidence Sufficiency Label"
+          },
+          "what_checked": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "What Checked"
+          },
+          "why": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Why"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "recommended_actions": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendedAction"
+            },
+            "type": "array",
+            "title": "Recommended Actions"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceView"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "uncertainty": {
+            "type": "string",
+            "title": "Uncertainty"
+          },
+          "requires_human_review": {
+            "type": "boolean",
+            "title": "Requires Human Review"
+          },
+          "community_status": {
+            "type": "string",
+            "enum": [
+              "NOT_REQUIRED",
+              "ELIGIBLE_WITH_CONSENT"
+            ],
+            "title": "Community Status"
+          },
+          "privacy_notice": {
+            "type": "string",
+            "title": "Privacy Notice"
+          },
+          "rulebook": {
+            "$ref": "#/components/schemas/RulebookTrace"
+          },
+          "pipeline": {
+            "items": {
+              "$ref": "#/components/schemas/PipelineStage"
+            },
+            "type": "array",
+            "title": "Pipeline"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id",
+          "trace_id",
+          "status",
+          "mode",
+          "mode_notice",
+          "input_summary",
+          "verdict",
+          "risk_level",
+          "dimensions",
+          "headline",
+          "evidence_sufficiency",
+          "evidence_sufficiency_label",
+          "what_checked",
+          "why",
+          "evidence",
+          "recommended_actions",
+          "sources",
+          "uncertainty",
+          "requires_human_review",
+          "community_status",
+          "privacy_notice",
+          "rulebook",
+          "pipeline",
+          "disclaimer"
+        ],
+        "title": "VerificationResponse"
+      }
+    }
+  }
+}

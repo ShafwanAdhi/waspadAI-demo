@@ -1,0 +1,251 @@
+{
+  "evaluated_model": "openai/gpt-oss-20b",
+  "evaluation_kind": "live_stage_level_planner",
+  "metrics": {
+    "case_count": 1,
+    "completed_cases": 1,
+    "schema_validity_rate": 1.0,
+    "classification_accuracy": 1.0,
+    "claim_recall": 1.0,
+    "claim_precision_proxy": 1.0,
+    "required_domain_recall": 1.0,
+    "critical_check_recall": 0.6667,
+    "retrieval_plan_accuracy": 0.6667,
+    "query_usefulness_proxy": 1.0,
+    "escalation_recall": 1.0,
+    "escalation_false_positive_rate": 1.0
+  },
+  "limitations": [
+    "Kasus evaluasi sintetis dan belum mewakili distribusi pengguna produksi.",
+    "Claim precision memakai pencocokan konsep berlabel, bukan penilaian semantik manusia.",
+    "Query usefulness adalah coverage konsep query, bukan keberhasilan live web retrieval.",
+    "Escalation ground truth adalah kebijakan risiko engineering yang perlu ditinjau manusia."
+  ],
+  "results": [
+    {
+      "case_id": "bank_otp_impersonation",
+      "status": "OK",
+      "duration_ms": 2383,
+      "scores": {
+        "classification_correct": true,
+        "required_domains_found": 2,
+        "required_domains_total": 2,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 3,
+          "generated": 3,
+          "matched_expected": 3,
+          "matched_generated": 3,
+          "missing": []
+        },
+        "critical_checks_found": 2,
+        "critical_checks_total": 3,
+        "missing_critical_checks": [
+          "verifikasi kanal resmi bank"
+        ],
+        "retrieval_checks_passed": 2,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": true,
+          "web_search_actual": true,
+          "missing_domain_rag": [],
+          "factcheck_rag_expected": false,
+          "factcheck_rag_actual": true
+        },
+        "query_concepts_found": 1,
+        "query_concepts_total": 1,
+        "missing_query_concepts": [],
+        "should_escalate": true,
+        "predicted_escalation": true,
+        "escalation_correct": true
+      },
+      "planner_output": {
+        "classification": "SCAM_MESSAGE",
+        "domains": [
+          "general_information_integrity",
+          "impersonation_phishing_ato"
+        ],
+        "attack_patterns": [
+          "authority_impersonation",
+          "credential_theft",
+          "urgency",
+          "fear"
+        ],
+        "claims": [
+          {
+            "id": "claim1",
+            "text": "Pengirim menyatakan dirinya berasal dari customer service bank",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "claim2",
+            "text": "Pengirim menyatakan bahwa mengirimkan kode OTP akan mencegah rekening diblokir",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "claim3",
+            "text": "Pengirim meminta kode OTP dikirim melalui WhatsApp",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "HIGH",
+        "potential_financial_risk": true,
+        "potential_identity_impersonation": true,
+        "contains_url": false,
+        "critical_checks": [
+          "Check for OTP request",
+          "Check for authority impersonation",
+          "Check for urgency"
+        ],
+        "required_evidence": [
+          "Official bank communication confirming identity",
+          "Bank's account block policy documentation",
+          "Bank's OTP delivery policy"
+        ],
+        "preferred_sources": [
+          "Official bank website",
+          "Bank's official support channels",
+          "Regulatory authority announcements"
+        ],
+        "interim_risk": "HIGH",
+        "interim_actions": [
+          "DO_NOT_SHARE_SECRET"
+        ],
+        "applied_rule_ids": [
+          "ATO-R004",
+          "GOV-R011",
+          "ATO-AP005",
+          "ATO-AP001",
+          "ATO-Q009",
+          "ATO-Q004",
+          "INF-I005",
+          "INF-I008",
+          "INF-Q004",
+          "INF-R007",
+          "INF-R002",
+          "GOV-SA002",
+          "ATO-R003"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "impersonation_phishing_ato",
+            "general_information_integrity"
+          ],
+          "community_rag": false,
+          "factcheck_rag": true
+        },
+        "web_queries": [
+          "bank OTP delivery policy WhatsApp",
+          "bank account block policy official",
+          "official bank customer service communication format"
+        ]
+      }
+    }
+  ],
+  "rate_limit_snapshot": {
+    "mode": "LIVE",
+    "models": [
+      {
+        "model": "qwen/qwen3.6-27b",
+        "roles": [
+          "Vision understanding",
+          "Verifier & response generator"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        }
+      },
+      {
+        "model": "openai/gpt-oss-20b",
+        "roles": [
+          "Investigation planner"
+        ],
+        "observed": true,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        },
+        "observed_at": "2026-09-10T09:46:20.197039+00:00",
+        "status_code": 200,
+        "source": "groq-response-headers",
+        "requests": {
+          "scope": "RPD",
+          "limit": 1000,
+          "remaining": 999,
+          "reset_raw": "1m26.4s",
+          "reset_at": "2026-09-10T09:47:46.597039+00:00",
+          "reset_in_seconds": 86,
+          "window_state": "ACTIVE"
+        },
+        "tokens": {
+          "scope": "TPM",
+          "limit": 8000,
+          "remaining": 4576,
+          "reset_raw": "25.68s",
+          "reset_at": "2026-09-10T09:46:45.877039+00:00",
+          "reset_in_seconds": 26,
+          "window_state": "ACTIVE"
+        },
+        "retry_after_seconds": null,
+        "age_seconds": 0
+      },
+      {
+        "model": "openai/gpt-oss-120b",
+        "roles": [
+          "Planner escalation"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        }
+      },
+      {
+        "model": "groq/compound-mini",
+        "roles": [
+          "Web search"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 250,
+          "tpm": 70000,
+          "tpd": null
+        }
+      },
+      {
+        "model": "groq/compound",
+        "roles": [
+          "High-complexity web search"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 250,
+          "tpm": 70000,
+          "tpd": null
+        }
+      }
+    ],
+    "observed_model_count": 1,
+    "updated_at": "2026-09-10T09:46:20.262198+00:00",
+    "measurement": "passive-response-headers",
+    "reference_plan": "FREE",
+    "reference_source": "https://console.groq.com/docs/rate-limits",
+    "does_not_make_provider_request": true,
+    "scope_notice": "RPM/RPD/TPM/TPD adalah jatah referensi plan. Header aktual hanya memberikan remaining RPD dan TPM. Setelah reset, jatah tetap tampil sementara remaining menunggu respons model berikutnya."
+  }
+}

@@ -1,0 +1,55 @@
+[
+  {
+    "document_id": "official_kemensos_cekbansos",
+    "domain": "social_assistance",
+    "source_type": "government",
+    "publisher": "Kementerian Sosial RI",
+    "title": "Cek Bansos Kemensos",
+    "url": "https://cekbansos.kemensos.go.id/",
+    "published_at": null,
+    "verification_status": "VERIFIED",
+    "authority_level": 1.0,
+    "language": "id",
+    "content": "Pengecekan resmi data penerima manfaat bantuan sosial dilakukan melalui portal Cek Bansos Kementerian Sosial. Pengguna perlu berhati-hati terhadap tautan lain yang mengatasnamakan program bantuan sosial."
+  },
+  {
+    "document_id": "official_ojk_iasc",
+    "domain": "finance",
+    "source_type": "official_regulator",
+    "publisher": "Indonesia Anti-Scam Centre — OJK",
+    "title": "Pusat Penanganan Penipuan Transaksi Keuangan Indonesia",
+    "url": "https://iasc.ojk.go.id/",
+    "published_at": null,
+    "verification_status": "VERIFIED",
+    "authority_level": 1.0,
+    "language": "id",
+    "content": "Korban penipuan transaksi keuangan perlu segera melapor melalui portal resmi IASC untuk jalur penanganan finansial dan juga membuat laporan kepada penegak hukum. Siapkan bukti transfer, data rekening, dan bukti percakapan."
+  },
+  {
+    "document_id": "official_ojk_safety_2026",
+    "domain": "scam",
+    "source_type": "official_regulator",
+    "publisher": "Otoritas Jasa Keuangan",
+    "title": "Imbauan kewaspadaan terhadap penipuan digital",
+    "url": "https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Indonesia-Anti-Scam-Centre-Gelar-Operasi-Bersama-Penanganan-Penipuan-Lintas-Negara.aspx",
+    "published_at": "2026-05-25",
+    "verification_status": "VERIFIED",
+    "authority_level": 1.0,
+    "language": "id",
+    "content": "Masyarakat diimbau tidak mudah percaya pada penawaran tidak wajar melalui pesan pribadi, media sosial, atau tautan yang tidak jelas; menjaga kerahasiaan data pribadi, OTP, dan kata sandi; serta memeriksa legalitas melalui kanal resmi."
+  },
+  {
+    "document_id": "official_komdigi_reporting",
+    "domain": "scam",
+    "source_type": "government",
+    "publisher": "Kementerian Komunikasi dan Digital",
+    "title": "Layanan pemeriksaan rekening dan nomor terindikasi penipuan",
+    "url": "https://www.komdigi.go.id/berita/artikel/detail/pengawasan-digital-adaptif-untuk-lindungi-warga-dan-jaga-inovasi",
+    "published_at": "2025-07-21",
+    "verification_status": "VERIFIED",
+    "authority_level": 0.98,
+    "language": "id",
+    "content": "Kementerian Komunikasi dan Digital mengelola layanan CekRekening.id dan AduanNomor.id untuk pemeriksaan atau pelaporan rekening dan nomor seluler yang terindikasi penipuan."
+  }
+]
+

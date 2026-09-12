@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://saring.local/schemas/rulebook-runtime.schema.json",
+  "title": "Saring Rulebook Runtime Contract",
+  "description": "Canonical contract that keeps investigation rules separate from case evidence.",
+  "$defs": {
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["field", "operator"],
+          "additionalProperties": false,
+          "properties": {
+            "field": {"type": "string", "minLength": 1},
+            "operator": {
+              "enum": ["eq", "neq", "in", "not_in", "contains", "exists", "gt", "gte", "lt", "lte"]
+            },
+            "value": {}
+          }
+        },
+        {
+          "type": "object",
+          "required": ["all"],
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/condition"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["any"],
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"$ref": "#/$defs/condition"}
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["not"],
+          "additionalProperties": false,
+          "properties": {
+            "not": {"$ref": "#/$defs/condition"}
+          }
+        }
+      ]
+    },
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rulebook_id",
+        "rulebook_version",
+        "domain",
+        "chunk_type",
+        "title",
+        "content",
+        "status",
+        "country",
+        "language",
+        "source_ids"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^(?:[A-Z]+-(?:AP|R|Q|I|SQ|SA|EV|DT)[0-9]{3}|ATO-STATE-[0-9]{3})$"},
+        "rulebook_id": {"type": "string", "pattern": "^RB-[A-Z]+-[0-9]{3}$"},
+        "rulebook_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "domain": {"type": "string", "minLength": 1},
+        "chunk_type": {
+          "enum": [
+            "attack_pattern",
+            "critical_indicator",
+            "red_flag",
+            "verification_question",
+            "investigation_step",
+            "search_template",
+            "evidence_requirement",
+            "decision_guidance",
+            "safe_action",
+            "do_not_do",
+            "escalation_rule",
+            "deterministic_trigger"
+          ]
+        },
+        "title": {"type": "string", "minLength": 1},
+        "content": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", null]},
+        "rule_origin": {
+          "enum": ["SOURCE_DERIVED", "HEURISTIC_SYNTHESIS", "ARCHITECTURE_RULE", null]
+        },
+        "freshness_dependency": {
+          "enum": ["stable_rule", "periodic_review", "recheck_required", "temporal_fact", null]
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Z]+-S[0-9]{3}$"},
+          "uniqueItems": true
+        },
+        "status": {"enum": ["canonical", "active", "deprecated", "under_review", "replaced"]},
+        "country": {"type": "string", "minLength": 2},
+        "language": {"type": "string", "minLength": 2},
+        "trigger_description": {"type": ["string", "null"]},
+        "agent_action": {"type": ["string", "null"]},
+        "caveat": {"type": ["string", "null"]},
+        "does_not_prove": {
+          "type": "array",
+          "items": {"type": "string"},
+          "uniqueItems": true
+        },
+        "stage": {
+          "enum": ["PRE_RETRIEVAL_SIGNAL", "POST_RETRIEVAL_GUARDRAIL", "POST_ACTION_STATE", null]
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "institution", "year", "source_type", "document", "url", "rag_relevance"],
+      "properties": {
+        "source_id": {"type": "string", "pattern": "^[A-Z]+-S[0-9]{3}$"},
+        "institution": {"type": "string", "minLength": 1},
+        "year": {"type": ["string", "integer"]},
+        "source_type": {"type": "string", "minLength": 1},
+        "document": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "pattern": "^https://"},
+        "rag_relevance": {"type": "string", "minLength": 1}
+      }
+    },
+    "deterministic_trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger_id", "stage", "condition", "force_rule_ids", "force_actions"],
+      "properties": {
+        "trigger_id": {"type": "string", "pattern": "^[A-Z]+-DT[0-9]{3}$"},
+        "stage": {"enum": ["PRE_RETRIEVAL_SIGNAL", "POST_RETRIEVAL_GUARDRAIL", "POST_ACTION_STATE"]},
+        "condition": {"$ref": "#/$defs/condition"},
+        "force_rule_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "pattern": "^[A-Z]+-R[0-9]{3}$"},
+          "uniqueItems": true
+        },
+        "force_actions": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules", "sources", "deterministic_triggers"],
+  "properties": {
+    "rules": {"type": "array", "items": {"$ref": "#/$defs/rule"}},
+    "sources": {"type": "array", "items": {"$ref": "#/$defs/source"}},
+    "deterministic_triggers": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/deterministic_trigger"}
+    }
+  }
+}

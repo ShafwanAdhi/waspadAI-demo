@@ -1,0 +1,339 @@
+GENERAL INFORMATION INTEGRITY RULEBOOK
+======================================
+Paragraph-first canonical corpus for pasted news, excerpts, captions, and standalone claims
+
+rulebook_id=RB-INF-001 | domain=general_information_integrity | version=1.0.0 | status=canonical | country=ID | language=id | last_reviewed=2026-08-23
+Canonical investigation-policy corpus for checking factual text and context. Current case facts must come from evidence, not from this rulebook.
+
+1. Purpose and Safety Boundary
+==============================
+Rulebook ini digunakan untuk berita yang ditempel, kutipan, caption media sosial, pesan terusan, klaim tunggal, angka, dan informasi yang mungkin kehilangan konteks. Ia membantu agent memilih klaim, sumber, pencarian, dan batas keputusan.
+Teks input adalah objek yang diperiksa, bukan evidence. Rulebook juga bukan evidence. Keduanya tidak boleh dipakai untuk membuktikan klaim tanpa sumber eksternal yang relevan.
+Truth, source authenticity, sender identity, channel safety, scam risk, dan content authenticity adalah dimensi berbeda. Satu dimensi tidak boleh otomatis menentukan dimensi lain.
+
+2. Information-Integrity Patterns
+=================================
+
+INF-AP001 - Source-free copied text
+pattern_id=INF-AP001 | chunk_type=attack_pattern | domain=general_information_integrity
+Teks hasil copy-paste dapat mempertahankan isi tetapi kehilangan URL asli, byline, tanggal, koreksi, judul, dan konteks publikasi.
+
+INF-AP002 - Missing or cropped context
+pattern_id=INF-AP002 | chunk_type=attack_pattern | domain=general_information_integrity
+Kutipan, paragraf, angka, atau pernyataan dipisahkan dari bagian sebelum/sesudahnya sehingga maknanya berubah atau tidak lengkap.
+
+INF-AP003 - False or incomplete attribution
+pattern_id=INF-AP003 | chunk_type=attack_pattern | domain=general_information_integrity
+Ucapan dikaitkan kepada tokoh, lembaga, riset, atau media tanpa sumber primer yang dapat diperiksa.
+
+INF-AP004 - Temporal miscontextualization
+pattern_id=INF-AP004 | chunk_type=attack_pattern | domain=general_information_integrity
+Informasi lama, jadwal lama, foto lama, aturan lama, atau angka lama diedarkan seolah masih berlaku saat ini.
+
+INF-AP005 - Headline-body mismatch
+pattern_id=INF-AP005 | chunk_type=attack_pattern | domain=general_information_integrity
+Judul menyatakan kepastian atau cakupan yang lebih luas daripada isi dan evidence di badan berita.
+
+INF-AP006 - Numeric context loss
+pattern_id=INF-AP006 | chunk_type=attack_pattern | domain=general_information_integrity
+Persentase, jumlah, ranking, risiko, atau grafik disajikan tanpa denominator, periode, populasi, metode, atau baseline.
+
+INF-AP007 - Source laundering
+pattern_id=INF-AP007 | chunk_type=attack_pattern | domain=general_information_integrity
+Banyak unggahan atau artikel mengulang satu klaim tetapi semuanya bersumber dari origin yang sama, sehingga jumlah salinan tampak seperti corroboration independen.
+
+INF-AP008 - Opinion, satire, or advertising framed as fact
+pattern_id=INF-AP008 | chunk_type=attack_pattern | domain=general_information_integrity
+Opini, prediksi, satire, testimoni, atau materi promosi disajikan ulang sebagai klaim faktual literal.
+
+3. Atomic Decision and Detection Rules
+======================================
+
+INF-R001 - Pasted text has incomplete provenance
+rule_id=INF-R001 | chunk_type=red_flag | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001,INF-S002
+Copy-paste tanpa URL sumber tidak mempertahankan provenance publikasi secara utuh.
+Agent action. Tandai source_authenticity=UNVERIFIED dan tetap periksa klaim faktualnya secara terpisah.
+Caveat. Hilangnya URL bukan bukti bahwa isi salah atau sengaja menipu.
+
+INF-R002 - Source identity and claim truth are separate
+rule_id=INF-R002 | chunk_type=decision_guidance | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001,INF-S004
+Sumber autentik dapat keliru dan sumber tidak autentik dapat menyalin fakta yang benar. Jangan menurunkan satu verdict dari dimensi lain.
+Agent action. Laporkan factual_status dan source_authenticity secara terpisah.
+
+INF-R003 - Atomize material claims
+rule_id=INF-R003 | chunk_type=investigation_step | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S001,INF-S002
+Pecah teks menjadi klaim atomik yang dapat diperiksa. Prioritaskan klaim yang material, berisiko, aktual, atau menjadi dasar tindakan pengguna.
+Agent action. Batasi delapan klaim utama pada MVP dan jangan menggabungkan entitas, waktu, angka, dan sebab-akibat yang dapat dinilai terpisah.
+
+INF-R004 - Recover original context
+rule_id=INF-R004 | chunk_type=investigation_step | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001,INF-S002
+Cari publikasi asli, tanggal, penulis, judul, revisi, dan paragraf di sekitar potongan sebelum menilai konteks.
+Agent action. Gunakan exact-phrase search dan kanal penerbit yang dapat diidentifikasi.
+
+INF-R005 - Verify attribution against a primary record
+rule_id=INF-R005 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001,INF-S002
+Kutipan atau klaim yang diatribusikan memerlukan rekaman, transkrip, dokumen, akun resmi, atau publikasi primer yang memuat pernyataan tersebut.
+Agent action. Cocokkan speaker, wording, tanggal, tempat, dan konteks.
+
+INF-R006 - Compare headline with body and source
+rule_id=INF-R006 | chunk_type=investigation_step | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=INF-S001
+Judul tidak boleh diverifikasi terpisah dari isi. Periksa apakah modalitas, cakupan, subjek, dan tingkat kepastian judul didukung badan artikel dan sumber asal.
+
+INF-R007 - Recheck temporal validity
+rule_id=INF-R007 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=temporal_fact | source_ids=INF-S001,INF-S002
+Klaim tentang kebijakan, pejabat, harga, jadwal, kejadian berjalan, kesehatan, atau statistik membutuhkan evidence yang sesuai tanggal acuan.
+Agent action. Bandingkan event date, publication date, update date, dan tanggal pemeriksaan.
+
+INF-R008 - Numbers require denominator and method
+rule_id=INF-R008 | chunk_type=evidence_requirement | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S001
+Angka harus diperiksa bersama unit, denominator, populasi, periode, lokasi, ukuran sampel, metode, dan baseline yang relevan.
+Agent action. Jangan menyimpulkan dari angka yang benar tetapi konteks kuantitatifnya hilang.
+
+INF-R009 - Classify non-factual speech before retrieval
+rule_id=INF-R009 | chunk_type=decision_guidance | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001
+Opini, pertanyaan, satire, prediksi, dan iklan tidak otomatis dinilai SUPPORTED atau REFUTED. Pisahkan factual subclaims bila ada.
+Agent action. Gunakan OPINION, SATIRE, atau NOT_APPLICABLE hanya setelah fungsi komunikasinya cukup jelas.
+
+INF-R010 - Repeated copies are not independent corroboration
+rule_id=INF-R010 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S001,INF-S002
+Beberapa halaman yang menyalin origin yang sama dihitung sebagai satu evidence family, bukan beberapa sumber independen.
+Agent action. Telusuri citation chain sampai origin dan deduplikasi berdasarkan asal.
+
+INF-R011 - Corroboration requires independent origins
+rule_id=INF-R011 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001,INF-S002
+Untuk klaim material, cari lebih dari satu origin independen bila primary source tunggal tidak cukup atau berpotensi berkepentingan.
+
+INF-R012 - Prefer the most direct competent source
+rule_id=INF-R012 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001,INF-S002
+Utamakan dokumen primer atau lembaga yang kompeten untuk klaim tersebut, lalu fact-checker dan jurnalisme mapan sebagai contextual corroboration.
+Caveat. Domain resmi saja tidak menjamin halaman relevan terhadap klaim tertentu.
+
+INF-R013 - Absence of search results proves neither truth nor falsity
+rule_id=INF-R013 | chunk_type=decision_guidance | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001
+Tidak menemukan program, kutipan, atau laporan bukan dengan sendirinya bukti bahwa klaim palsu; retrieval mungkin tidak lengkap.
+Agent action. Nilai coverage dan kembalikan UNVERIFIED bila evidence belum memadai.
+
+INF-R014 - Low evidence sufficiency forces UNVERIFIED
+rule_id=INF-R014 | chunk_type=decision_guidance | severity=CRITICAL | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001,INF-S002
+Jika evidence tidak cukup, factual verdict harus UNVERIFIED walau teks terdengar meyakinkan atau rule pattern cocok.
+Agent action. Pertahankan tindakan aman yang relevan tanpa mengarang kepastian.
+
+INF-R015 - Missing source URL keeps authenticity unverified
+rule_id=INF-R015 | chunk_type=decision_guidance | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Tanpa URL atau artefak asal, sistem tidak dapat mengautentikasi penerbit, penulis, timestamp, atau riwayat koreksi dari teks tempel.
+
+INF-R016 - Quotation wording and scope must match
+rule_id=INF-R016 | chunk_type=evidence_requirement | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S001
+Perbedaan negasi, subjek, waktu, modalitas seperti mungkin/pasti, dan batas kalimat dapat mengubah makna kutipan.
+
+INF-R017 - Causal claims need causal evidence
+rule_id=INF-R017 | chunk_type=evidence_requirement | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S001
+Korelasi, urutan waktu, atau testimoni tunggal tidak cukup untuk membuktikan sebab-akibat.
+Agent action. Cari desain studi, mekanisme, confounder, dan keterbatasan yang relevan.
+
+INF-R018 - Scope must match population and location
+rule_id=INF-R018 | chunk_type=decision_guidance | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=INF-S001
+Temuan lokal, sampel khusus, atau aturan satu wilayah tidak boleh digeneralisasi ke populasi atau wilayah lain tanpa dukungan.
+
+INF-R019 - Authority cannot replace relevance
+rule_id=INF-R019 | chunk_type=decision_guidance | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Sumber berotoritas yang membahas topik serupa tetapi tidak menyinggung klaim hanya menjadi CONTEXT dan tidak boleh memenuhi claim coverage.
+
+INF-R020 - Contradictions require explicit treatment
+rule_id=INF-R020 | chunk_type=decision_guidance | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001,INF-S002
+Jika sumber relevan bertentangan, jelaskan perbedaan tanggal, definisi, metode, cakupan, dan authority; jangan memilih diam-diam sumber yang disukai.
+
+INF-R021 - Search snippets are discovery aids, not final context
+rule_id=INF-R021 | chunk_type=do_not_do | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=INF-S001
+Snippet dapat terpotong atau tidak memuat caveat. Jangan menetapkan verdict hanya dari snippet jika halaman atau sumber primer dapat diperiksa.
+
+INF-R022 - Do not infer deceptive intent
+rule_id=INF-R022 | chunk_type=do_not_do | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001
+Kesalahan faktual tidak membuktikan niat disinformasi. Gunakan label isi dan risiko; jangan menuduh motif tanpa evidence.
+
+INF-R023 - Plain text has no media-authenticity verdict
+rule_id=INF-R023 | chunk_type=decision_guidance | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S004
+Untuk copy-paste teks, content_authenticity media adalah NOT_APPLICABLE. Provenance atau autentisitas publikasi tetap dapat dinilai terpisah bila artefak asal tersedia.
+
+INF-R024 - Provenance validates history, not truth
+rule_id=INF-R024 | chunk_type=decision_guidance | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S003,INF-S004
+Provenance yang tervalidasi membantu mengikat riwayat dan assertion ke aset, tetapi tidak memberi penilaian bahwa factual claim di dalamnya benar.
+
+INF-R025 - Prioritize consequential claims
+rule_id=INF-R025 | chunk_type=decision_guidance | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S002
+Jika teks panjang mengandung banyak klaim, prioritaskan yang berdampak pada keselamatan, kesehatan, keuangan, reputasi publik, tindakan pengguna, dan kesimpulan utama.
+
+4. Verification Questions
+=========================
+
+INF-Q001 - Apa klaim atomik utamanya?
+question_id=INF-Q001 | chunk_type=verification_question | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001
+Pisahkan siapa, melakukan apa, kepada siapa, kapan, di mana, berapa, dan dengan hubungan sebab apa.
+
+INF-Q002 - Apa origin paling awal yang dapat ditemukan?
+question_id=INF-Q002 | chunk_type=verification_question | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001,INF-S002
+Telusuri URL asli, dokumen, rekaman, akun, atau publikasi pertama dan bedakan dari salinan.
+
+INF-Q003 - Konteks apa yang hilang?
+question_id=INF-Q003 | chunk_type=verification_question | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S001
+Periksa paragraf sekitar, judul, tanggal, lokasi, populasi, definisi, metode, dan caveat.
+
+INF-Q004 - Apakah evidence tepat waktu?
+question_id=INF-Q004 | chunk_type=verification_question | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=temporal_fact | source_ids=INF-S001
+Pastikan evidence berlaku pada tanggal yang ditanyakan, bukan hanya pernah benar.
+
+INF-Q005 - Apakah sumber benar-benar independen?
+question_id=INF-Q005 | chunk_type=verification_question | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S002
+Periksa apakah berbagai artikel mengutip origin, wire service, press release, atau narasumber yang sama.
+
+INF-Q006 - Apakah teks meminta tindakan berisiko?
+question_id=INF-Q006 | chunk_type=verification_question | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Pisahkan pemeriksaan factual claim dari scam-risk workflow bila ada link, secret, executable, remote access, atau pembayaran.
+
+5. Investigation Steps
+======================
+
+INF-I001 - Segment long text
+step_id=INF-I001 | chunk_type=investigation_step | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S001
+Pertahankan urutan paragraf, deteksi kalimat claim-bearing, deduplikasi pengulangan, dan pilih maksimal delapan klaim material.
+
+INF-I002 - Search exact phrases
+step_id=INF-I002 | chunk_type=investigation_step | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001
+Cari frasa unik dalam tanda kutip, lalu longgarkan query bila origin tidak ditemukan.
+
+INF-I003 - Verify named entities and roles
+step_id=INF-I003 | chunk_type=investigation_step | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=temporal_fact | source_ids=INF-S001
+Periksa ejaan entitas, jabatan pada tanggal relevan, organisasi, lokasi, dan hubungan antarpihak.
+
+INF-I004 - Build a claim-evidence matrix
+step_id=INF-I004 | chunk_type=investigation_step | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Petakan setiap evidence hanya kepada klaim yang benar-benar didukung, dibantah, atau diberi konteks; jangan gunakan satu sumber untuk seluruh teks tanpa entailment.
+
+INF-I005 - Compare publication and event dates
+step_id=INF-I005 | chunk_type=investigation_step | severity=HIGH | origin=SOURCE_DERIVED | freshness=temporal_fact | source_ids=INF-S001
+Catat event date, published_at, updated_at, dan retrieved_at untuk mendeteksi recirculation atau outdated claim.
+
+INF-I006 - Inspect numeric definitions
+step_id=INF-I006 | chunk_type=investigation_step | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S001
+Bandingkan unit, denominator, periode, populasi, metode, uncertainty, dan perubahan definisi.
+
+INF-I007 - Separate safety from truth
+step_id=INF-I007 | chunk_type=investigation_step | severity=CRITICAL | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Jalankan scam-risk guardrail segera bila tindakan sensitif terdeteksi, sambil mempertahankan factual verdict berbasis evidence.
+
+INF-I008 - Record missing evidence
+step_id=INF-I008 | chunk_type=investigation_step | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Sebutkan sumber primer, tanggal, konteks, atau corroboration yang belum tersedia dan pengaruhnya terhadap verdict.
+
+6. Search Templates
+===================
+
+INF-SQ001 - Exact quote origin
+query_template_id=INF-SQ001 | chunk_type=search_template | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S001
+Template. "frasa unik" nama tokoh atau lembaga
+
+INF-SQ002 - Primary institution
+query_template_id=INF-SQ002 | chunk_type=search_template | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S002
+Template. site:domain-resmi topik entitas tanggal
+
+INF-SQ003 - Fact-check corpus
+query_template_id=INF-SQ003 | chunk_type=search_template | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S002
+Template. klaim inti cek fakta hoaks konteks
+
+INF-SQ004 - Numeric origin
+query_template_id=INF-SQ004 | chunk_type=search_template | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=recheck_required | source_ids=INF-S001
+Template. angka unit populasi laporan dataset metodologi
+
+INF-SQ005 - Temporal update
+query_template_id=INF-SQ005 | chunk_type=search_template | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=temporal_fact | source_ids=INF-S001
+Template. topik status terbaru tanggal berlaku pembaruan
+
+INF-SQ006 - Correction and revision
+query_template_id=INF-SQ006 | chunk_type=search_template | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S002
+Template. judul atau URL koreksi klarifikasi revisi
+
+7. Evidence and Response Rules
+==============================
+
+INF-EV001 - Claim-specific relevance
+evidence_rule_id=INF-EV001 | chunk_type=evidence_requirement | severity=CRITICAL | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Evidence harus dipetakan ke claim_id tertentu dan tidak boleh memenuhi klaim lain hanya karena topiknya sama.
+
+INF-EV002 - Source transparency
+evidence_rule_id=INF-EV002 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S002
+Catat publisher, title, URL, tanggal publikasi, tanggal retrieval, excerpt, stance, relevance, authority, dan verification status.
+
+INF-EV003 - Context cannot satisfy a claim
+evidence_rule_id=INF-EV003 | chunk_type=evidence_requirement | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Evidence ber-stance CONTEXT tidak boleh menaikkan claim coverage seolah SUPPORTS atau REFUTES.
+
+INF-EV004 - Independence by origin
+evidence_rule_id=INF-EV004 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S002
+Nilai independence berdasarkan origin, bukan jumlah URL atau publisher yang menyalin materi sama.
+
+INF-EV005 - Preserve contradictory evidence
+evidence_rule_id=INF-EV005 | chunk_type=evidence_requirement | severity=HIGH | origin=SOURCE_DERIVED | freshness=recheck_required | source_ids=INF-S001
+Evidence relevan yang bertentangan tidak boleh dibuang; contradiction harus memengaruhi sufficiency dan explanation.
+
+INF-EV006 - Sufficiency is not model confidence
+evidence_rule_id=INF-EV006 | chunk_type=evidence_requirement | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Evidence sufficiency dibentuk oleh authority, relevance, independence, coverage, recency, agreement, dan contradiction; bukan self-confidence model.
+
+INF-SA001 - Pause consequential action
+action_id=INF-SA001 | chunk_type=safe_action | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Jika status belum terverifikasi dan teks mendorong tindakan berisiko, tunda tindakan sampai ada konfirmasi independen.
+
+INF-SA002 - Ask for the original source
+action_id=INF-SA002 | chunk_type=safe_action | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S002
+Minta URL asli, tanggal, atau dokumen lengkap tanpa menyebarkan ulang data pribadi.
+
+INF-SA003 - Read beyond headline
+action_id=INF-SA003 | chunk_type=safe_action | severity=MEDIUM | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=INF-S001
+Baca isi, sumber, tanggal, koreksi, dan caveat sebelum membagikan atau bertindak.
+
+INF-SA004 - Communicate uncertainty
+action_id=INF-SA004 | chunk_type=safe_action | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Nyatakan bukti yang ada, yang hilang, dan apa yang dapat mengubah kesimpulan.
+
+INF-SA005 - Do not amplify sensitive content
+action_id=INF-SA005 | chunk_type=safe_action | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule | source_ids=INF-S002
+Jangan mempublikasikan ulang nomor telepon, identitas, secret, atau data korban saat meminta verifikasi.
+
+8. Deterministic Guardrail
+==========================
+
+INF-DT001 - Low evidence sufficiency
+trigger_id=INF-DT001 | chunk_type=deterministic_trigger | severity=CRITICAL | origin=ARCHITECTURE_RULE | freshness=stable_rule | stage=POST_RETRIEVAL_GUARDRAIL | source_ids=INF-S001,INF-S002
+Observed signal. evidence_sufficiency_low=true dan domain general_information_integrity aktif.
+Forced action. RETURN_UNVERIFIED
+
+9. Source Registry
+==================
+
+INF-S001
+source_id=INF-S001 | institution=UNESCO | year=2018 | source_type=authoritative_reference
+Document. Journalism, Fake News and Disinformation: Handbook for Journalism Education and Training
+URL. https://www.unesco.org/en/articles/journalism-fake-news-disinformation
+RAG relevance. Framework informasi disorder, fact-checking, dan praktik verifikasi online.
+
+INF-S002
+source_id=INF-S002 | institution=Koalisi Cek Fakta Indonesia | year=2024 | source_type=authoritative_methodology
+Document. Kelas Antihoaks dan metodologi cek fakta
+URL. https://www.cekfakta.com/download/Modul-Ajar/Fase-F/KelasAntihoaks.pdf
+RAG relevance. Metodologi Indonesia untuk pemilihan klaim, pemeriksaan origin, sumber resmi, corroboration, ahli, dan transparansi.
+
+INF-S003
+source_id=INF-S003 | institution=Coalition for Content Provenance and Authenticity | year=current | source_type=technical_standard
+Document. C2PA Technical Specifications
+URL. https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html
+RAG relevance. Kontrak provenance dan authenticity media berbasis assertion serta content binding.
+
+INF-S004
+source_id=INF-S004 | institution=Coalition for Content Provenance and Authenticity | year=current | source_type=authoritative_principles
+Document. C2PA Guiding Principles
+URL. https://c2pa.org/principles/
+RAG relevance. Provenance validation tidak membuat value judgment bahwa isi aset baik, buruk, benar, atau salah.
+
+10. Runtime Notes
+=================
+Setiap RuleMatch harus tetap berada pada RULE_CONTEXT. Current Evidence harus berasal dari pencarian atau verified evidence store dan dipetakan per claim. Untuk input teks tanpa URL, factual_status masih dapat diperiksa, tetapi source_authenticity tetap UNVERIFIED. Untuk plain text, content_authenticity media adalah NOT_APPLICABLE.

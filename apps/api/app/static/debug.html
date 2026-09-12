@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="description" content="Observability lokal untuk pipeline WaspadAI." />
+    <title>WaspadAI — Pipeline Log</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%23e85a3f' d='M32 4 55 13v17c0 14-10 24-23 29C19 54 9 44 9 30V13L32 4Z'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/static/debug.css" />
+  </head>
+  <body>
+    <header class="debug-header">
+      <a class="brand" href="http://127.0.0.1:3000" aria-label="Kembali ke WaspadAI">
+        <span class="brand-mark" aria-hidden="true">W</span>
+        <span>WaspadAI<span class="brand-dot">.</span> <small>Pipeline Log</small></span>
+      </a>
+      <div class="header-actions">
+        <span id="debugStatus" class="connection-status" aria-live="polite"><i></i>Menghubungkan</span>
+        <a class="capacity-link" href="#groqCapacity">Groq quota</a>
+        <a class="back-link" href="http://127.0.0.1:3000">← Pemeriksa fakta</a>
+      </div>
+    </header>
+
+    <main class="debug-layout">
+      <aside class="trace-panel" aria-labelledby="tracePanelTitle">
+        <div class="panel-intro">
+          <p class="eyebrow">LOCAL OBSERVABILITY</p>
+          <h1 id="tracePanelTitle">Jejak pemeriksaan</h1>
+          <p>Output yang sudah disaring untuk tuning instruksi dan diagnosis pipeline.</p>
+        </div>
+
+        <div class="trace-controls">
+          <label class="search-field" for="traceSearch">
+            <span>Cari trace</span>
+            <input id="traceSearch" type="search" placeholder="ID, verdict, atau label" autocomplete="off" />
+          </label>
+          <div class="filter-row">
+            <label>
+              <span class="sr-only">Filter modality</span>
+              <select id="inputFilter">
+                <option value="ALL">Semua input</option>
+                <option value="IMAGE">Image</option>
+                <option value="TEXT">Text</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Filter status</span>
+              <select id="statusFilter">
+                <option value="ALL">Semua status</option>
+                <option value="COMPLETED">Selesai</option>
+                <option value="FAILED">Gagal</option>
+                <option value="RUNNING">Berjalan</option>
+              </select>
+            </label>
+            <button id="refreshButton" class="icon-button" type="button" title="Muat ulang" aria-label="Muat ulang trace">↻</button>
+          </div>
+        </div>
+
+        <div id="traceList" class="trace-list" aria-live="polite"></div>
+        <div id="traceEmpty" class="trace-empty" hidden>
+          <strong>Belum ada trace</strong>
+          <p>Jalankan satu pemeriksaan image atau text, lalu kembali ke halaman ini.</p>
+          <a href="/">Buat pemeriksaan</a>
+        </div>
+        <p id="retentionNote" class="retention-note"></p>
+      </aside>
+
+      <section class="detail-panel" aria-labelledby="rateLimitTitle">
+        <section id="groqCapacity" class="rate-limit-section" aria-labelledby="rateLimitTitle">
+          <div class="rate-limit-heading">
+            <div>
+              <p class="eyebrow">GROQ CAPACITY</p>
+              <h2 id="rateLimitTitle">Rate limit per model</h2>
+              <p>Snapshot pasif dari response header terakhir—tanpa request dummy yang menghabiskan quota.</p>
+            </div>
+            <div class="rate-limit-links">
+              <span id="rateLimitStatus">Menunggu data</span>
+              <a href="https://console.groq.com/docs/rate-limits" target="_blank" rel="noopener noreferrer">Dokumentasi Groq ↗</a>
+            </div>
+          </div>
+          <dl class="rate-glossary" aria-label="Definisi rate limit">
+            <div><dt>RPM</dt><dd>Requests per minute</dd></div>
+            <div><dt>RPD</dt><dd>Requests per day</dd></div>
+            <div><dt>TPM</dt><dd>Tokens per minute</dd></div>
+            <div><dt>TPD</dt><dd>Tokens per day</dd></div>
+          </dl>
+          <div class="rate-table-scroll">
+            <div class="rate-limit-labels" aria-hidden="true">
+              <span>Model / peran</span><span>RPM</span><span>RPD</span><span>TPM</span><span>TPD</span><span>Reset aktual</span>
+            </div>
+            <div id="rateLimitList" class="rate-limit-list" aria-live="polite"></div>
+          </div>
+          <p id="rateLimitNotice" class="rate-limit-notice"></p>
+        </section>
+
+        <div id="detailEmpty" class="detail-empty">
+          <div class="empty-glyph" aria-hidden="true"><span></span><span></span><span></span></div>
+          <p class="eyebrow">AWAITING TRACE</p>
+          <h2>Pilih satu pemeriksaan</h2>
+          <p>Setiap tahap akan tampil berurutan bersama input aman, output, model, durasi, dan snapshot instruksinya.</p>
+        </div>
+
+        <div id="traceDetail" hidden>
+          <header class="trace-heading">
+            <div>
+              <p id="traceKicker" class="eyebrow"></p>
+              <h2 id="traceTitle">Detail trace</h2>
+              <p id="traceHeadline" class="trace-headline"></p>
+            </div>
+            <span id="traceStatus" class="status-pill"></span>
+          </header>
+
+          <dl id="traceMeta" class="trace-meta"></dl>
+          <div id="privacyBanner" class="privacy-banner"></div>
+
+          <div class="timeline-heading">
+            <div>
+              <p class="eyebrow">EXECUTION TIMELINE</p>
+              <h3>Output setiap tahap</h3>
+            </div>
+            <span id="stageCount"></span>
+          </div>
+          <div id="stageTimeline" class="stage-timeline"></div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="/static/debug.js" defer></script>
+  </body>
+</html>

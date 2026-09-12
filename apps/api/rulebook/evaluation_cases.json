@@ -1,0 +1,86 @@
+[
+  {
+    "case_id": "otp_request_bank",
+    "text": "Petugas bank meminta saya kirim OTP sekarang.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["ATO-R004"],
+    "forbidden_forced_rules": ["ATO-R006"]
+  },
+  {
+    "case_id": "educational_negation",
+    "text": "Petugas resmi tidak pernah meminta OTP. Jangan instal APK dari pesan.",
+    "possible_impersonation": false,
+    "expected_forced_rules": [],
+    "forbidden_forced_rules": ["ATO-R004", "ATO-R006"]
+  },
+  {
+    "case_id": "government_apk",
+    "text": "Pesan BPJS meminta install APK untuk pembaruan data.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["ATO-R006", "GOV-R009"],
+    "forbidden_forced_rules": []
+  },
+  {
+    "case_id": "remote_access",
+    "text": "Customer service meminta saya memberikan remote access melalui AnyDesk.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["ATO-R007"],
+    "forbidden_forced_rules": []
+  },
+  {
+    "case_id": "safe_account_transfer",
+    "text": "Petugas bank meminta transfer uang ke rekening aman agar akun tidak diblokir.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["ATO-R018"],
+    "forbidden_forced_rules": []
+  },
+  {
+    "case_id": "government_personal_payment",
+    "text": "Petugas pajak meminta transfer ke rekening pribadi malam ini.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["GOV-R010"],
+    "forbidden_forced_rules": []
+  },
+  {
+    "case_id": "legitimate_government_payment",
+    "text": "Bayar pajak melalui kanal resmi pemerintah.",
+    "possible_impersonation": false,
+    "expected_forced_rules": [],
+    "forbidden_forced_rules": ["GOV-R010"]
+  },
+  {
+    "case_id": "public_official_deepfake",
+    "text": "Video pejabat menawarkan bantuan melalui WhatsApp dan diduga deepfake.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["ATO-R014", "ATO-R015"],
+    "forbidden_forced_rules": []
+  },
+  {
+    "case_id": "payment_already_sent",
+    "text": "Saya sudah transfer uang kepada pengirim pesan tersebut.",
+    "possible_impersonation": true,
+    "expected_forced_rules": ["ATO-R019", "ATO-R025"],
+    "forbidden_forced_rules": []
+  },
+  {
+    "case_id": "pasted_news_without_source",
+    "text": "Menurut laporan yang diteruskan, angka pengangguran turun 50 persen pada 2024, tetapi URL sumber tidak tersedia.",
+    "possible_impersonation": false,
+    "expected_forced_rules": [],
+    "forbidden_forced_rules": ["ATO-R004", "ATO-R006", "ATO-R018"]
+  },
+  {
+    "case_id": "old_news_recirculated",
+    "text": "Berita lama tahun 2020 dibagikan kembali hari ini seolah kebijakan tersebut masih berlaku.",
+    "possible_impersonation": false,
+    "expected_forced_rules": [],
+    "forbidden_forced_rules": ["ATO-R004", "ATO-R006"]
+  },
+  {
+    "case_id": "opinion_not_secret_request",
+    "text": "Menurut saya petugas resmi seharusnya tidak pernah meminta OTP dan berita itu perlu diperiksa lagi.",
+    "possible_impersonation": false,
+    "expected_forced_rules": [],
+    "forbidden_forced_rules": ["ATO-R004"]
+  }
+]

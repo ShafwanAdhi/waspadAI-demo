@@ -1,0 +1,164 @@
+[
+  {
+    "source_id": "INF-S001",
+    "institution": "UNESCO",
+    "year": "2018",
+    "source_type": "authoritative_reference",
+    "document": "Journalism, Fake News and Disinformation: Handbook for Journalism Education and Training",
+    "url": "https://www.unesco.org/en/articles/journalism-fake-news-disinformation",
+    "rag_relevance": "Framework informasi disorder, fact-checking, dan praktik verifikasi online."
+  },
+  {
+    "source_id": "INF-S002",
+    "institution": "Koalisi Cek Fakta Indonesia",
+    "year": "2024",
+    "source_type": "authoritative_methodology",
+    "document": "Kelas Antihoaks dan metodologi cek fakta",
+    "url": "https://www.cekfakta.com/download/Modul-Ajar/Fase-F/KelasAntihoaks.pdf",
+    "rag_relevance": "Metodologi Indonesia untuk pemilihan klaim, pemeriksaan origin, sumber resmi, corroboration, ahli, dan transparansi."
+  },
+  {
+    "source_id": "INF-S003",
+    "institution": "Coalition for Content Provenance and Authenticity",
+    "year": "current",
+    "source_type": "technical_standard",
+    "document": "C2PA Technical Specifications",
+    "url": "https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html",
+    "rag_relevance": "Kontrak provenance dan authenticity media berbasis assertion serta content binding."
+  },
+  {
+    "source_id": "INF-S004",
+    "institution": "Coalition for Content Provenance and Authenticity",
+    "year": "current",
+    "source_type": "authoritative_principles",
+    "document": "C2PA Guiding Principles",
+    "url": "https://c2pa.org/principles/",
+    "rag_relevance": "Provenance validation tidak membuat value judgment bahwa isi aset baik, buruk, benar, atau salah."
+  },
+  {
+    "source_id": "GOV-S001",
+    "institution": "Direktorat Jenderal Pajak",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan Sehubungan dengan Implementasi Coretax Direktorat Jenderal Pajak (Coretax DJP)",
+    "url": "https://pajak.go.id/sites/default/files/2025-01/Waspada%20Penipuan%20Sehubungan%20dengan%20Implementasi%20Coretax%20Direktorat%20Jenderal%20Pajak%20%28Coretax%20DJP%29.pdf",
+    "rag_relevance": "Primary advisory untuk phishing, pharming, sniffing, social engineering, money mule, APK, look-alike link, dan consistency terhadap SOP."
+  },
+  {
+    "source_id": "GOV-S002",
+    "institution": "OJK / Satgas PASTI",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan Website Mengatasnamakan Indonesia Anti-Scam Centre (IASC)",
+    "url": "https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Waspada-Penipuan-Website-Mengatasnamakan-Indonesia-Anti-Scam-Centre-IASC.aspx",
+    "rag_relevance": "Primary example bahwa authority anti-scam resmi dapat diimpersonasi; mendukung independent channel verification."
+  },
+  {
+    "source_id": "GOV-S003",
+    "institution": "Direktorat Jenderal Pajak",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan yang Mengatasnamakan Direktorat Jenderal Pajak",
+    "url": "https://www.pajak.go.id/index.php/id/siaran-pers/waspada-penipuan-yang-mengatasnamakan-direktorat-jenderal-pajak",
+    "rag_relevance": "Primary advisory untuk fake officer, payment destination, aplikasi, link, SMS, WhatsApp, email, dan telepon."
+  },
+  {
+    "source_id": "GOV-S004",
+    "institution": "Direktorat Jenderal Pajak",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan Mengatasnamakan Direktorat Jenderal Pajak",
+    "url": "https://www.pajak.go.id/index.php/id/pengumuman/waspada-penipuan-mengatasnamakan-direktorat-jenderal-pajak-1",
+    "rag_relevance": "Primary advisory untuk confirmation/reporting channels dan scam procedure comparison."
+  },
+  {
+    "source_id": "GOV-S005",
+    "institution": "Kementerian Komunikasi dan Digital",
+    "year": "2026",
+    "source_type": "authoritative_reference",
+    "document": "Ini HOAKS! Bansos dari Kemenkeu Cair Mulai Februari 2026",
+    "url": "https://www.komdigi.go.id/berita/berita-komdigi/detail/ini-hoaks-bansos-dari-kemenkeu-cair-mulai-februari-2026",
+    "rag_relevance": "Primary case advisory untuk fake aid, unofficial social account, collection of personal data, WhatsApp redirection, phishing, dan channel verification. Case-specific evidence tetap harus dicari live."
+  },
+  {
+    "source_id": "GOV-S006",
+    "institution": "Bank Indonesia",
+    "year": "2026",
+    "source_type": "authoritative_reference",
+    "document": "Modul Edukasi Keuangan Digital Tingkat Dasar - Modul 5 Pelindungan terhadap Risiko",
+    "url": "https://www.bi.go.id/id/edukasi/Documents/Buku-Panduan-Modul-Edukasi-Keuangan-Digital-Tingkat-Dasar-Modul-5-Pelindungan-terhadap-Risiko.pdf",
+    "rag_relevance": "Official stable guidance untuk phishing, vishing, smishing, spoofing, PIN/OTP/password protection, official channels, dan deepfake awareness."
+  },
+  {
+    "source_id": "GOV-S007",
+    "institution": "OJK / Satgas PASTI",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Satgas PASTI Imbau Masyarakat Waspadai Penipuan Menggunakan Artificial Intelligence",
+    "url": "https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Satgas-PASTI-Imbau-Masyarakat-Waspadai-Penipuan-Menggunakan-AI.aspx",
+    "rag_relevance": "Primary advisory untuk voice cloning dan deepfake impersonation."
+  },
+  {
+    "source_id": "ATO-S001",
+    "institution": "Bank Indonesia",
+    "year": "2026",
+    "source_type": "authoritative_reference",
+    "document": "Modul Edukasi Keuangan Digital Tingkat Dasar - Modul 5 Pelindungan terhadap Risiko",
+    "url": "https://www.bi.go.id/id/edukasi/Documents/Buku-Panduan-Modul-Edukasi-Keuangan-Digital-Tingkat-Dasar-Modul-5-Pelindungan-terhadap-Risiko.pdf",
+    "rag_relevance": "Official stable guidance untuk phishing, vishing, smishing, spoofing, perlindungan PIN/OTP/password, official channels, security control, dan deepfake awareness."
+  },
+  {
+    "source_id": "ATO-S002",
+    "institution": "OJK / Satgas PASTI",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Satgas PASTI Imbau Masyarakat Waspadai Penipuan Menggunakan Artificial Intelligence",
+    "url": "https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Satgas-PASTI-Imbau-Masyarakat-Waspadai-Penipuan-Menggunakan-AI.aspx",
+    "rag_relevance": "Primary advisory untuk voice cloning dan deepfake impersonation."
+  },
+  {
+    "source_id": "ATO-S003",
+    "institution": "Direktorat Jenderal Pajak",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan Sehubungan dengan Implementasi Coretax Direktorat Jenderal Pajak (Coretax DJP)",
+    "url": "https://pajak.go.id/sites/default/files/2025-01/Waspada%20Penipuan%20Sehubungan%20dengan%20Implementasi%20Coretax%20Direktorat%20Jenderal%20Pajak%20%28Coretax%20DJP%29.pdf",
+    "rag_relevance": "Concrete Indonesian pattern untuk phishing, APK, sniffing, social engineering, dan money mule."
+  },
+  {
+    "source_id": "ATO-S004",
+    "institution": "OJK",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan Mengatasnamakan Bank melalui SMS",
+    "url": "https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Waspada-Penipuan-Mengatasnamakan-Bank-melalui-SMS.aspx",
+    "rag_relevance": "Primary advisory untuk SMS impersonation, suspicious-transaction pretext, hadiah/promo, malicious link, dan data theft."
+  },
+  {
+    "source_id": "ATO-S005",
+    "institution": "Direktorat Jenderal Pajak",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan yang Mengatasnamakan Direktorat Jenderal Pajak",
+    "url": "https://www.pajak.go.id/index.php/id/siaran-pers/waspada-penipuan-yang-mengatasnamakan-direktorat-jenderal-pajak",
+    "rag_relevance": "Primary advisory untuk malicious link/application, impersonation, dan payment destination."
+  },
+  {
+    "source_id": "ATO-S006",
+    "institution": "OJK / IASC",
+    "year": "current",
+    "source_type": "authoritative_reference",
+    "document": "Indonesia Anti-Scam Centre official portal and reporting guidance",
+    "url": "https://iasc.ojk.go.id/",
+    "rag_relevance": "Official post-incident financial scam response; relevant when payment has already been sent."
+  },
+  {
+    "source_id": "ATO-S007",
+    "institution": "OJK / Satgas PASTI",
+    "year": "2025",
+    "source_type": "authoritative_reference",
+    "document": "Waspada Penipuan Website Mengatasnamakan Indonesia Anti-Scam Centre (IASC)",
+    "url": "https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Waspada-Penipuan-Website-Mengatasnamakan-Indonesia-Anti-Scam-Centre-IASC.aspx",
+    "rag_relevance": "Supports recovery-authority impersonation and independent official-channel verification."
+  }
+]

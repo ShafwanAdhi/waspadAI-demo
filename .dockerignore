@@ -1,0 +1,12 @@
+.git
+.gitignore
+**/.env
+**/node_modules
+**/.next
+**/__pycache__
+**/.pytest_cache
+**/.playwright-cli
+**/output
+**/*.tsbuildinfo
+artifacts
+waspadAI 2

@@ -1,0 +1,276 @@
+{
+  "evaluated_model": "openai/gpt-oss-20b",
+  "evaluation_kind": "live_stage_level_planner",
+  "metrics": {
+    "case_count": 1,
+    "completed_cases": 1,
+    "schema_validity_rate": 1.0,
+    "classification_accuracy": 1.0,
+    "claim_recall": 1.0,
+    "claim_precision_proxy": 0.8333,
+    "required_domain_recall": 1.0,
+    "critical_check_recall": 0.0,
+    "retrieval_plan_accuracy": 1.0,
+    "query_usefulness_proxy": 0.5,
+    "escalation_recall": 0.0,
+    "escalation_false_positive_rate": null
+  },
+  "limitations": [
+    "Kasus evaluasi sintetis dan belum mewakili distribusi pengguna produksi.",
+    "Claim precision memakai pencocokan konsep berlabel, bukan penilaian semantik manusia.",
+    "Query usefulness adalah coverage konsep query, bukan keberhasilan live web retrieval.",
+    "Escalation ground truth adalah kebijakan risiko engineering yang perlu ditinjau manusia."
+  ],
+  "results": [
+    {
+      "case_id": "multi_claim_government_aid",
+      "status": "OK",
+      "duration_ms": 1880,
+      "scores": {
+        "classification_correct": true,
+        "required_domains_found": 3,
+        "required_domains_total": 3,
+        "missing_domains": [],
+        "claim_metrics": {
+          "expected": 6,
+          "generated": 6,
+          "matched_expected": 6,
+          "matched_generated": 5,
+          "missing": []
+        },
+        "critical_checks_found": 0,
+        "critical_checks_total": 4,
+        "missing_critical_checks": [
+          "verifikasi program bantuan dan nominal",
+          "verifikasi domain dan kanal resmi",
+          "jangan membayar biaya ke rekening pribadi",
+          "jangan membagikan OTP atau KTP"
+        ],
+        "retrieval_checks_passed": 3,
+        "retrieval_checks_total": 3,
+        "retrieval_details": {
+          "web_search_expected": true,
+          "web_search_actual": true,
+          "missing_domain_rag": [],
+          "factcheck_rag_expected": true,
+          "factcheck_rag_actual": true
+        },
+        "query_concepts_found": 1,
+        "query_concepts_total": 2,
+        "missing_query_concepts": [
+          "kanal resmi pendaftaran bantuan"
+        ],
+        "should_escalate": true,
+        "predicted_escalation": false,
+        "escalation_correct": false
+      },
+      "planner_output": {
+        "classification": "SCAM_MESSAGE",
+        "domains": [
+          "government_public_service",
+          "general_information_integrity",
+          "impersonation_phishing_ato"
+        ],
+        "attack_patterns": [
+          "authority_impersonation",
+          "credential_theft",
+          "payment_diversion",
+          "urgency"
+        ],
+        "claims": [
+          {
+            "id": "C1",
+            "text": "Kementerian Sosial membuka bantuan Rp5 juta untuk seluruh pemilik KTP mulai hari ini.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "C2",
+            "text": "Pendaftaran bantuan hanya tersedia selama dua jam melalui tautan WhatsApp.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "C3",
+            "text": "Penerima harus membayar biaya administrasi Rp150.000 ke rekening atas nama pribadi.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "C4",
+            "text": "Penerima diminta mengirim foto KTP dan kode OTP untuk konfirmasi pencairan.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "C5",
+            "text": "Bantuan Rp5 juta tersedia untuk seluruh pemilik KTP.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          },
+          {
+            "id": "C6",
+            "text": "Pendaftaran hanya dapat dilakukan melalui tautan WhatsApp.",
+            "claim_type": "FACTUAL_CLAIM",
+            "verifiable": true
+          }
+        ],
+        "requires_fresh_data": true,
+        "complexity": "MEDIUM",
+        "potential_financial_risk": true,
+        "potential_identity_impersonation": true,
+        "contains_url": false,
+        "critical_checks": [
+          "Verify existence of official announcement from Kementerian Sosial",
+          "Confirm payment requirement legitimacy",
+          "Check OTP request legitimacy",
+          "Assess urgency claim",
+          "Validate time-limited registration claim"
+        ],
+        "required_evidence": [
+          "Official Kementerian Sosial press release or website announcement",
+          "Government policy documents on social assistance",
+          "Payment policy for social assistance",
+          "OTP usage policy for government services",
+          "Time-bound registration procedures"
+        ],
+        "preferred_sources": [
+          "Kementerian Sosial official website",
+          "Kementerian Sosial press releases",
+          "Government gazette",
+          "Reputable news outlets covering social assistance"
+        ],
+        "interim_risk": "HIGH",
+        "interim_actions": [
+          "DO_NOT_SHARE_SECRET"
+        ],
+        "applied_rule_ids": [
+          "ATO-R004",
+          "GOV-R008",
+          "ATO-R003",
+          "INF-R007",
+          "INF-R008",
+          "INF-Q003"
+        ],
+        "retrieval_plan": {
+          "web_search": true,
+          "domain_rag": [
+            "government_public_service",
+            "general_information_integrity",
+            "impersonation_phishing_ato"
+          ],
+          "community_rag": true,
+          "factcheck_rag": true
+        },
+        "web_queries": [
+          "Kementerian Sosial bantuan Rp5 juta 2026",
+          "Kementerian Sosial bantuan KTP 2026",
+          "Kementerian Sosial pembayaran administrasi bantuan",
+          "Kementerian Sosial OTP bantuan KTP",
+          "Kementerian Sosial pendaftaran dua jam bantuan"
+        ]
+      }
+    }
+  ],
+  "rate_limit_snapshot": {
+    "mode": "LIVE",
+    "models": [
+      {
+        "model": "qwen/qwen3.6-27b",
+        "roles": [
+          "Vision understanding",
+          "Verifier & response generator"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        }
+      },
+      {
+        "model": "openai/gpt-oss-20b",
+        "roles": [
+          "Investigation planner"
+        ],
+        "observed": true,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        },
+        "observed_at": "2026-09-10T10:25:25.128900+00:00",
+        "status_code": 200,
+        "source": "groq-response-headers",
+        "requests": {
+          "scope": "RPD",
+          "limit": 1000,
+          "remaining": 999,
+          "reset_raw": "1m26.4s",
+          "reset_at": "2026-09-10T10:26:51.528900+00:00",
+          "reset_in_seconds": 86,
+          "window_state": "ACTIVE"
+        },
+        "tokens": {
+          "scope": "TPM",
+          "limit": 8000,
+          "remaining": 5764,
+          "reset_raw": "16.77s",
+          "reset_at": "2026-09-10T10:25:41.898900+00:00",
+          "reset_in_seconds": 17,
+          "window_state": "ACTIVE"
+        },
+        "retry_after_seconds": null,
+        "age_seconds": 0
+      },
+      {
+        "model": "openai/gpt-oss-120b",
+        "roles": [
+          "Planner escalation"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 1000,
+          "tpm": 8000,
+          "tpd": 200000
+        }
+      },
+      {
+        "model": "groq/compound-mini",
+        "roles": [
+          "Web search"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 250,
+          "tpm": 70000,
+          "tpd": null
+        }
+      },
+      {
+        "model": "groq/compound",
+        "roles": [
+          "High-complexity web search"
+        ],
+        "observed": false,
+        "reference_limits": {
+          "rpm": 30,
+          "rpd": 250,
+          "tpm": 70000,
+          "tpd": null
+        }
+      }
+    ],
+    "observed_model_count": 1,
+    "updated_at": "2026-09-10T10:25:25.166014+00:00",
+    "measurement": "passive-response-headers",
+    "reference_plan": "FREE",
+    "reference_source": "https://console.groq.com/docs/rate-limits",
+    "does_not_make_provider_request": true,
+    "scope_notice": "RPM/RPD/TPM/TPD adalah jatah referensi plan. Header aktual hanya memberikan remaining RPD dan TPM. Setelah reset, jatah tetap tampil sementara remaining menunggu respons model berikutnya."
+  }
+}

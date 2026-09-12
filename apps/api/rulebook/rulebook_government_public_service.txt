@@ -1,0 +1,563 @@
+GOVERNMENT & PUBLIC SERVICE SCAM INVESTIGATION RULEBOOK
+=======================================================
+Paragraph-first canonical corpus for semantic chunking and retrieval
+
+rulebook_id=RB-GOV-001 | domain=government_public_service | version=1.2.0 | status=canonical | country=ID | language=id | last_reviewed=2026-08-23
+Canonical investigation-strategy corpus for Rulebook-Guided RAG. Current facts must be verified through live evidence.
+
+1. Purpose and RAG Role
+=======================
+Rulebook ini digunakan sebagai investigation-policy layer ketika sebuah pesan, akun, situs, dokumen, telepon, aplikasi, audio, video, atau pihak mengatasnamakan pemerintah, kementerian atau lembaga, pemerintah daerah, pejabat publik, aparat, regulator, program bantuan, pajak, administrasi kependudukan, jaminan sosial, atau layanan publik lain. Rulebook tidak menentukan fakta aktual hanya dari corpus; ia mengajarkan agent apa yang harus diekstrak, diperiksa, dicari, dan dibandingkan sebelum menghasilkan verdict.
+Informasi yang cepat berubah, seperti program yang sedang aktif, pejabat yang sedang menjabat, nomor resmi, domain resmi terkini, prosedur yang baru diperbarui, atau status sebuah kanal, harus diperiksa melalui live evidence retrieval. Stable rule tetap berada pada RAG, sedangkan current fact tetap berada pada search/evidence layer.
+Rulebook ini sangat sering digunakan bersama domain impersonation_phishing_ato. government_public_service menjawab konteks skenario dan prosedur resmi; impersonation_phishing_ato menjawab mekanisme serangan seperti impersonation, phishing, credential theft, malicious APK, remote access, dan account takeover.
+
+1.1 Runtime Contract and Safety Boundary
+========================================
+Rulebook context harus dikirim sebagai RULE_CONTEXT dan tidak boleh dikonversi menjadi EVIDENCE. Rule menentukan bagaimana claim, identity, channel, procedure, payment, dan temporal validity diperiksa; hanya live evidence yang dapat mendukung atau membantah factual claim pada kasus aktual.
+Trigger deterministic dievaluasi backend terhadap canonical signals. Mention, kutipan, larangan, dan materi edukasi tidak boleh diperlakukan sebagai requested action. Contoh 'petugas tidak pernah meminta OTP' menghasilkan polarity=NEGATED_WARNING, bukan secret_request_detected=true.
+Canonical action signal harus menyimpan actor, action, object, target, polarity, modality source, dan extraction confidence. Unknown tetap UNKNOWN atau null. Forced critical rules tidak boleh dibuang oleh reranker.
+Setiap RuleMatch runtime harus menyimpan rule_id, matched_signals, match_type, retrieval_score bila ada, rulebook_version, dan does_not_prove. Domain government_public_service menggunakan soft routing bersama impersonation_phishing_ato agar kesalahan classifier tidak menghilangkan critical cross-domain rule.
+
+2. Scope
+========
+Cakupan utama meliputi bansos, subsidi, bantuan, program pemerintah, pajak, tagihan, tunggakan, restitusi, denda, pemutakhiran data, Dukcapil dan IKD, BPJS, registrasi layanan publik, OJK dan IASC, polisi atau aparat, complaint/recovery service, surat resmi, akun media sosial pemerintah, WhatsApp, SMS, email, telepon, website, QR, aplikasi, APK, dan impersonasi pejabat atau pegawai lembaga publik.
+Out of scope adalah general misinformation yang tidak memiliki hubungan langsung dengan tindakan, identitas, prosedur, pembayaran, credential, atau risiko pengguna. Rulebook ini juga tidak boleh menyimpan daftar nomor telepon atau URL temporer sebagai fakta permanen tanpa freshness policy.
+
+3. Fundamental Investigation Model
+==================================
+Setiap kasus government/public-service harus dipecah menjadi minimal lima axis. CLAIM menilai apakah program, kewajiban, benefit, layanan, atau peristiwa benar ada. IDENTITY menilai apakah sender atau petugas benar mewakili pihak yang diklaim. CHANNEL menilai nomor, akun, email, website, aplikasi, atau QR yang digunakan. PROCEDURE menilai apakah tindakan yang diminta sesuai prosedur resmi. PAYMENT menilai alasan pembayaran, metode, dan beneficiary bila transaksi diminta. Bila klaim bersifat temporal, agent juga menilai TEMPORAL VALIDITY dari evidence.
+Keputusan pada satu axis tidak boleh otomatis menyelesaikan axis lain. Program yang benar tidak membuktikan sender benar. Institusi yang benar tidak membuktikan link benar. Prosedur pembayaran yang nyata tidak membuktikan rekening tujuan benar. Inilah invariant utama domain ini.
+
+4. Attack Pattern Catalogue
+===========================
+
+GOV-AP001 - Fake aid or subsidy
+-------------------------------
+pattern_id=GOV-AP001 | chunk_type=attack_pattern | domain=government_public_service
+Pelaku menggunakan branding pemerintah atau pejabat, menawarkan benefit, menambahkan urgency atau scarcity, lalu mengarahkan user ke link, chat, formulir, atau pembayaran.
+
+GOV-AP002 - Fake administrative problem
+---------------------------------------
+pattern_id=GOV-AP002 | chunk_type=attack_pattern | domain=government_public_service
+Pelaku mengklaim ada masalah pajak, data, BPJS, identitas, denda, atau akun, kemudian meminta update, klik link, install aplikasi, mengirim data, atau membayar.
+
+GOV-AP003 - Fake refund or restitution
+--------------------------------------
+pattern_id=GOV-AP003 | chunk_type=attack_pattern | domain=government_public_service
+User diberi kabar refund/restitusi/benefit tak terduga lalu diminta melakukan verifikasi identitas, memasukkan bank data, atau mengikuti link.
+
+GOV-AP004 - Fake official website
+---------------------------------
+pattern_id=GOV-AP004 | chunk_type=attack_pattern | domain=government_public_service
+Pelaku membuat website yang menyerupai institusi resmi, memakai logo dan tampilan kredibel, lalu meminta registrasi, complaint, recovery, PII, credential, atau pembayaran.
+
+GOV-AP005 - Public official impersonation
+-----------------------------------------
+pattern_id=GOV-AP005 | chunk_type=attack_pattern | domain=government_public_service
+Nama, jabatan, foto, atau akun pejabat dipakai sebagai authority signal untuk meminta komunikasi, data, pembayaran, atau tindakan lain.
+
+GOV-AP006 - Government-branded malicious application
+----------------------------------------------------
+pattern_id=GOV-AP006 | chunk_type=attack_pattern | domain=government_public_service
+APK atau file executable dibungkus sebagai dokumen pajak, aktivasi layanan, undangan, tagihan, benefit, atau update pelayanan.
+
+GOV-AP007 - Fake enforcement or fine
+------------------------------------
+pattern_id=GOV-AP007 | chunk_type=attack_pattern | domain=government_public_service
+Authority atau law-enforcement pretext digunakan bersama fear dan urgency untuk memaksa transfer, credential, atau instalasi aplikasi.
+
+GOV-AP008 - Fake recovery or complaint authority
+------------------------------------------------
+pattern_id=GOV-AP008 | chunk_type=attack_pattern | domain=government_public_service
+Korban scam ditarget ulang oleh pihak yang mengaku regulator, IASC, investigator, polisi, atau jasa recovery.
+
+GOV-AP009 - Legitimate program, fraudulent channel
+--------------------------------------------------
+pattern_id=GOV-AP009 | chunk_type=attack_pattern | domain=government_public_service
+Pelaku membajak konteks program pemerintah yang memang benar untuk mengarahkan korban ke kanal atau pembayaran palsu.
+
+GOV-AP010 - Public-official deepfake
+------------------------------------
+pattern_id=GOV-AP010 | chunk_type=attack_pattern | domain=government_public_service
+Wajah atau suara figur publik ditiru untuk menambah trust dan mendorong transfer, registrasi, atau disclosure data.
+
+5. Mandatory Entity Extraction
+==============================
+Sebelum melakukan live search, agent harus mencoba mengekstrak claimed_agency, claimed_official, program_or_service, claimed_problem, claimed_benefit, sender_phone, sender_email, sender_social_account, URL, domain, application_name, attachment_type, letter_number, case_number, registration_number, requested_actions, requested_data, payment_requested, payment_destination, urgency, threat, deadline, dan user_action_state. Field yang tidak diketahui harus bernilai null atau unknown; agent tidak boleh mengisi field dengan asumsi.
+
+6. Atomic Rules
+===============
+
+GOV-R001 - Pisahkan claim, identity, channel, procedure, dan payment
+rule_id=GOV-R001 | chunk_type=decision_guidance | severity=CRITICAL | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S001,GOV-S002,GOV-S003
+Program, lembaga, pejabat, atau kewajiban yang benar-benar ada tidak mengautentikasi sender, link, aplikasi, prosedur, atau tujuan pembayaran. Agent harus mempertahankan assessment terpisah untuk setiap axis.
+Agent action. Keluarkan status per-axis sebelum overall risk.
+Caveat. Program sah dan channel palsu adalah hasil yang valid.
+
+GOV-R002 - Temukan kanal resmi secara independen
+rule_id=GOV-R002 | chunk_type=investigation_step | severity=CRITICAL | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S001,GOV-S002,GOV-S004
+Kanal resmi harus ditemukan melalui sumber independen, bukan hanya melalui nomor, URL, QR, atau contact yang diberikan sender yang sedang diperiksa.
+Agent action. Cari responsible agency, official domain, dan current contact melalui live evidence.
+
+GOV-R003 - Eksistensi lembaga tidak membuktikan sender
+rule_id=GOV-R003 | chunk_type=decision_guidance | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S002,GOV-S005
+Nama institusi, pejabat, jabatan, program, logo, kartu identitas, atau dokumen yang memang nyata hanya membuktikan objek tersebut ada; hal itu tidak membuktikan sender mewakilinya.
+Agent action. Pertahankan identity_status=UNVERIFIED sampai ada evidence independen.
+
+GOV-R004 - Verifikasi hostname secara literal
+rule_id=GOV-R004 | chunk_type=investigation_step | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S001,GOV-S003
+Jika pesan memuat URL, ekstrak hostname dan registrable domain lalu bandingkan dengan official domain yang ditemukan secara independen. Logo, favicon, warna, title, dan kata 'resmi' tidak cukup.
+Trigger. url_present=true
+Agent action. Jalankan exact-domain comparison dan redirect analysis secara aman.
+
+GOV-R005 - Look-alike domain adalah red flag
+rule_id=GOV-R005 | chunk_type=red_flag | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S001
+Domain yang sengaja menyerupai nama instansi tetapi tidak identik merupakan phishing/pharming signal dan membutuhkan verifikasi tambahan.
+Trigger. domain_similarity_high && exact_match=false
+Agent action. Naikkan channel risk dan aktifkan phishing/domain checks.
+Caveat. Kemiripan domain bukan bukti final malicious.
+
+GOV-R006 - HTTPS bukan bukti identitas pemerintah
+rule_id=GOV-R006 | chunk_type=decision_guidance | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S006
+HTTPS/TLS hanya menunjukkan koneksi terenkripsi. HTTPS tidak membuktikan website dimiliki lembaga yang diklaim.
+Trigger. https=true
+Agent action. Jangan menurunkan risk hanya karena HTTPS tersedia.
+
+GOV-R007 - Bandingkan requested action dengan prosedur resmi
+rule_id=GOV-R007 | chunk_type=investigation_step | severity=CRITICAL | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S001,GOV-S004
+Untuk update data, pembayaran, refund, download aplikasi, registrasi, atau tindakan administratif lain, agent harus mencari prosedur resmi dan membandingkannya secara eksplisit dengan tindakan yang diminta.
+Agent action. Return procedure_status=CONSISTENT, INCONSISTENT, atau UNVERIFIED.
+
+GOV-R008 - Permintaan secret mengaktifkan ATO
+rule_id=GOV-R008 | chunk_type=critical_indicator | severity=CRITICAL | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S004,ATO-S001
+Permintaan OTP, PIN, password, CVV, recovery code, authentication code, atau secret lain adalah critical signal dan harus mengaktifkan domain impersonation_phishing_ato.
+Trigger. secret_request_detected=true
+Agent action. Force-retrieve credential rules dan berikan immediate safe action.
+Caveat. Penyebutan secret dalam peringatan, edukasi, atau kutipan tidak mengaktifkan trigger.
+
+GOV-R009 - Government-branded APK memicu malware workflow
+rule_id=GOV-R009 | chunk_type=critical_indicator | severity=CRITICAL | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S001,ATO-S003
+APK atau executable yang didistribusikan melalui chat dengan kedok pajak, BPJS, bantuan, administrasi, atau layanan publik harus memicu malware-risk investigation.
+Trigger. government_context=true && suspicious_executable_received=true
+Agent action. Jangan instal. Jika sudah diinstal, pindah ke post-compromise workflow.
+Caveat. APK tidak otomatis malicious. Trigger membutuhkan delivery/request context, bukan penyebutan APK dalam materi edukasi.
+
+GOV-R010 - Tujuan pembayaran personal atau tidak terverifikasi adalah high-risk indicator
+rule_id=GOV-R010 | chunk_type=critical_indicator | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S003
+Jika pembayaran yang mengatasnamakan kewajiban atau layanan pemerintah diarahkan ke rekening atau wallet personal/tidak dapat diverifikasi, payment destination harus berstatus suspicious sampai terbukti sah.
+Trigger. payment_requested=true && (payment_destination_type=PERSONAL || beneficiary_status in [UNVERIFIED,MISMATCH])
+Agent action. Verifikasi payment reason, official payment channel, dan beneficiary secara terpisah.
+Caveat. payment_requested=true saja bukan indikator scam karena pajak, denda, dan layanan tertentu dapat memiliki pembayaran sah.
+
+GOV-R011 - Urgency adalah supporting signal
+rule_id=GOV-R011 | chunk_type=red_flag | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=ATO-S001
+Frasa seperti 'sekarang', 'hari ini', 'akun diblokir', 'denda bertambah', atau 'kesempatan terakhir' adalah social-engineering signal tetapi tidak cukup sendiri untuk menentukan scam.
+Trigger. urgency=true
+Agent action. Gunakan urgency sebagai feature yang dikombinasikan dengan identity, payment, credential, dan procedure evidence.
+
+GOV-R012 - Authority plus threat plus sensitive action menaikkan risk
+rule_id=GOV-R012 | chunk_type=red_flag | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S001,ATO-S001
+Kombinasi klaim otoritas, ancaman, dan permintaan transfer, credential, instalasi aplikasi, atau data sensitif harus meningkatkan prioritas investigasi.
+Trigger. authority=true && threat=true && sensitive_action_requested=true
+Agent action. Berikan conservative interim action sebelum user bertindak.
+Caveat. Authority atau threat tanpa sensitive action adalah supporting context dan tidak cukup sendiri untuk high-risk classification.
+
+GOV-R013 - Dokumen tampak resmi bukan proof-of-origin
+rule_id=GOV-R013 | chunk_type=decision_guidance | severity=MEDIUM | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S001
+PDF, surat, kop, stempel, tanda tangan berbentuk gambar, QR, atau kartu identitas digital adalah artefak yang perlu diverifikasi, bukan bukti final asal dokumen.
+Trigger. official_looking_document=true
+Agent action. Ekstrak nomor surat/case/reference dan cari validasi independen bila tersedia.
+
+GOV-R014 - Foto, suara, dan video pejabat bukan authentication
+rule_id=GOV-R014 | chunk_type=decision_guidance | severity=HIGH | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S006,GOV-S007,ATO-S002
+Deepfake dan voice cloning membuat wajah atau suara figur publik tidak cukup sebagai sole proof-of-identity.
+Trigger. public_figure_media=true
+Agent action. Lakukan out-of-band verification dan provenance/forensic checks bila relevan.
+
+GOV-R015 - Waspadai recovery-authority impersonation
+rule_id=GOV-R015 | chunk_type=attack_pattern | severity=CRITICAL | origin=SOURCE_DERIVED | freshness=stable_rule | source_ids=GOV-S002
+Pihak yang mengaku IASC, OJK, regulator, aparat, atau jasa pemulihan setelah korban terkena scam harus diverifikasi seperti sender lain.
+Trigger. recovery_service_claim=true
+Agent action. Temukan portal resmi secara independen dan jangan membayar recovery fee tanpa verifikasi.
+Caveat. Korban scam dapat menjadi target scam kedua.
+
+GOV-R016 - Tidak menemukan program bukan bukti program palsu
+rule_id=GOV-R016 | chunk_type=decision_guidance | severity=CRITICAL | origin=ARCHITECTURE_RULE | freshness=stable_rule
+Kegagalan retrieval menemukan program atau prosedur tidak boleh diubah menjadi verdict FALSE. Absence of retrieved evidence berarti evidence belum cukup.
+Trigger. retrieval_no_result=true
+Agent action. Gunakan factual_status=UNVERIFIED dan berikan safe action konservatif.
+
+GOV-R017 - Evidence historis membutuhkan temporal validation
+rule_id=GOV-R017 | chunk_type=evidence_requirement | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule
+Sumber resmi yang lama hanya relevan bila periodenya cocok dengan claim. Agent harus membandingkan claim_date, published_at, valid_period, dan current_date.
+Agent action. Tandai OUTDATED atau UNVERIFIED jika temporal validity gagal.
+
+GOV-R018 - Explicit clarification dari responsible agency berbobot tinggi
+rule_id=GOV-R018 | chunk_type=decision_guidance | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S001,GOV-S002,GOV-S004
+Pernyataan eksplisit dari lembaga yang benar-benar bertanggung jawab terhadap program, prosedur, atau channel memiliki bobot tinggi jika membahas klaim yang sama dan masih relevan secara temporal.
+Agent action. Prioritaskan responsible agency, lalu corroborate bila diperlukan.
+Caveat. Official source tetap harus diuji claim-match dan temporal validity.
+
+GOV-R019 - Program legit plus fraudulent channel adalah verdict valid
+rule_id=GOV-R019 | chunk_type=decision_guidance | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule
+Sistem harus mampu menyatakan program benar tetapi channel, sender, atau requested action mencurigakan atau palsu.
+Agent action. Jangan mereduksi seluruh kasus menjadi satu TRUE/FALSE.
+
+GOV-R020 - Nomor tidak ditemukan berarti unverified
+rule_id=GOV-R020 | chunk_type=decision_guidance | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule
+Nomor yang tidak ditemukan pada daftar official contact atau reputation database tidak otomatis fraudulent.
+Trigger. phone_not_found=true
+Agent action. Gunakan status UNVERIFIED dan cari evidence lain.
+
+GOV-R021 - Official social account perlu cross-channel verification
+rule_id=GOV-R021 | chunk_type=investigation_step | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S005
+Display name, profile photo, follower count, atau badge visual dalam screenshot tidak cukup untuk mengautentikasi akun.
+Trigger. social_account_present=true
+Agent action. Cari exact handle/profile URL dari official source yang ditemukan independen.
+
+GOV-R022 - QR adalah transport, bukan trust seal
+rule_id=GOV-R022 | chunk_type=investigation_step | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S001
+QR dalam surat, poster, atau pesan pemerintah harus diekstrak dan target URL/payment destination-nya diverifikasi. Keberadaan QR sendiri tidak mengautentikasi dokumen.
+Trigger. qr_present=true
+Agent action. Decode secara aman lalu route ke URL/payment verification.
+
+GOV-R023 - Permintaan PII perlu purpose dan procedure check
+rule_id=GOV-R023 | chunk_type=red_flag | severity=HIGH | origin=HEURISTIC_SYNTHESIS | freshness=stable_rule | source_ids=GOV-S005
+Permintaan NIK, KK, rekening, tanggal lahir, alamat, atau data identitas lain harus dinilai berdasarkan purpose, channel, minimization, dan procedure resmi.
+Trigger. pii_request=true
+Agent action. Jangan sarankan user mengirim PII sebelum channel/procedure terverifikasi.
+
+GOV-R024 - Klaim pejabat dan institusi harus dipisahkan
+rule_id=GOV-R024 | chunk_type=decision_guidance | severity=MEDIUM | origin=ARCHITECTURE_RULE | freshness=stable_rule
+Jika sender mengatasnamakan seorang pejabat, agent harus memverifikasi keberadaan pejabat, jabatan saat ini, dan otoritasnya terhadap requested action secara terpisah.
+Trigger. claimed_official!=null
+Agent action. Gunakan live evidence untuk current role dan authority.
+
+GOV-R025 - Payment reason, channel, dan beneficiary adalah tiga objek berbeda
+rule_id=GOV-R025 | chunk_type=investigation_step | severity=HIGH | origin=ARCHITECTURE_RULE | freshness=stable_rule
+Alasan pembayaran yang legitimate tidak membuktikan channel dan beneficiary legitimate. Ketiganya harus memiliki assessment sendiri.
+Trigger. payment_requested=true
+Agent action. Return payment_reason_status, payment_channel_status, dan beneficiary_status.
+
+6.1 Deterministic Trigger Rules
+===============================
+
+GOV-DT001
+trigger_id=GOV-DT001 | chunk_type=deterministic_trigger | stage=PRE_RETRIEVAL_SIGNAL
+Observed signal. government_context=true and secret_request_detected=true
+Forced action. Force GOV-R008, ATO-R003, and ATO-R004; return immediate DO_NOT_SHARE_SECRET.
+
+GOV-DT002
+trigger_id=GOV-DT002 | chunk_type=deterministic_trigger | stage=PRE_RETRIEVAL_SIGNAL
+Observed signal. government_context=true and suspicious_executable_received=true
+Forced action. Force GOV-R009 and ATO-R006; return immediate DO_NOT_INSTALL.
+
+GOV-DT003
+trigger_id=GOV-DT003 | chunk_type=deterministic_trigger | stage=PRE_RETRIEVAL_SIGNAL
+Observed signal. government_context=true and payment_requested=true and destination personal or beneficiary unverified/mismatch
+Forced action. Force GOV-R010 and GOV-R025; require payment reason, channel, and beneficiary verification.
+
+GOV-DT004
+trigger_id=GOV-DT004 | chunk_type=deterministic_trigger | stage=PRE_RETRIEVAL_SIGNAL
+Observed signal. government_context=true and authority=true and threat=true and sensitive_action_requested=true
+Forced action. Force GOV-R012 and conservative interim action.
+
+7. Verification Questions
+=========================
+
+GOV-Q001
+question_id=GOV-Q001 | chunk_type=verification_question
+Instansi apa yang disebut?
+
+GOV-Q002
+question_id=GOV-Q002 | chunk_type=verification_question
+Program, layanan, kewajiban, benefit, atau masalah apa yang diklaim?
+
+GOV-Q003
+question_id=GOV-Q003 | chunk_type=verification_question
+Siapa petugas atau pejabat yang diklaim?
+
+GOV-Q004
+question_id=GOV-Q004 | chunk_type=verification_question
+Dari nomor, email, akun, atau website apa pesan berasal?
+
+GOV-Q005
+question_id=GOV-Q005 | chunk_type=verification_question
+Apakah ada link atau QR?
+
+GOV-Q006
+question_id=GOV-Q006 | chunk_type=verification_question
+Apakah ada APK, file, atau aplikasi yang diminta diunduh?
+
+GOV-Q007
+question_id=GOV-Q007 | chunk_type=verification_question
+Apakah diminta OTP, PIN, password, CVV, recovery code, atau code lain?
+
+GOV-Q008
+question_id=GOV-Q008 | chunk_type=verification_question
+Apakah diminta NIK, KK, rekening, atau data sensitif?
+
+GOV-Q009
+question_id=GOV-Q009 | chunk_type=verification_question
+Apakah ada pembayaran? Untuk apa dan ke siapa?
+
+GOV-Q010
+question_id=GOV-Q010 | chunk_type=verification_question
+Apakah ada ancaman, urgency, atau deadline?
+
+GOV-Q011
+question_id=GOV-Q011 | chunk_type=verification_question
+Apakah ada nomor surat, case, registrasi, atau referensi?
+
+GOV-Q012
+question_id=GOV-Q012 | chunk_type=verification_question
+Apakah user sudah membuka link?
+
+GOV-Q013
+question_id=GOV-Q013 | chunk_type=verification_question
+Apakah user sudah menginstal aplikasi?
+
+GOV-Q014
+question_id=GOV-Q014 | chunk_type=verification_question
+Apakah user sudah memasukkan credential?
+
+GOV-Q015
+question_id=GOV-Q015 | chunk_type=verification_question
+Apakah user sudah mengirim uang?
+
+8. Investigation Steps
+======================
+
+GOV-I001
+step_id=GOV-I001 | chunk_type=investigation_step
+Ekstrak claimed institution, program/service, sender identity, channel, requested action, dan user action state.
+
+GOV-I002
+step_id=GOV-I002 | chunk_type=investigation_step
+Decompose pesan menjadi atomic factual claims serta identity, channel, procedure, dan payment claims.
+
+GOV-I003
+step_id=GOV-I003 | chunk_type=investigation_step
+Jalankan deterministic critical triggers untuk secret, APK, remote access, payment destination, dan coercive threat.
+
+GOV-I004
+step_id=GOV-I004 | chunk_type=investigation_step
+Temukan responsible agency dan official domain/channel secara independen.
+
+GOV-I005
+step_id=GOV-I005 | chunk_type=investigation_step
+Verifikasi existence dan temporal status program/service/kewajiban melalui live evidence.
+
+GOV-I006
+step_id=GOV-I006 | chunk_type=investigation_step
+Cari current official procedure untuk tindakan yang diminta.
+
+GOV-I007
+step_id=GOV-I007 | chunk_type=investigation_step
+Bandingkan exact sender, social account, domain, application, atau channel dengan official source.
+
+GOV-I008
+step_id=GOV-I008 | chunk_type=investigation_step
+Verifikasi nomor surat, case, reference, atau registration bila sistem resmi memungkinkan.
+
+GOV-I009
+step_id=GOV-I009 | chunk_type=investigation_step
+Jika ada pembayaran, verifikasi reason, official payment channel, dan beneficiary.
+
+GOV-I010
+step_id=GOV-I010 | chunk_type=investigation_step
+Cari explicit scam/hoax clarification dari responsible agency dan authoritative supporting sources.
+
+GOV-I011
+step_id=GOV-I011 | chunk_type=investigation_step
+Normalisasi evidence, cek source authority, relevance, contradiction, dan temporal validity.
+
+GOV-I012
+step_id=GOV-I012 | chunk_type=investigation_step
+Keluarkan status per-axis dan overall risk; jika bukti tidak cukup, gunakan UNVERIFIED.
+
+9. Search Query Templates
+=========================
+
+GOV-SQ001
+query_template_id=GOV-SQ001 | chunk_type=search_template
+site:{official_domain} "{program_name}"
+
+GOV-SQ002
+query_template_id=GOV-SQ002 | chunk_type=search_template
+site:{official_domain} "{service_name}"
+
+GOV-SQ003
+query_template_id=GOV-SQ003 | chunk_type=search_template
+site:{official_domain} "{claimed_procedure}"
+
+GOV-SQ004
+query_template_id=GOV-SQ004 | chunk_type=search_template
+site:{official_domain} "{letter_number}"
+
+GOV-SQ005
+query_template_id=GOV-SQ005 | chunk_type=search_template
+site:{official_domain} "{claimed_official}"
+
+GOV-SQ006
+query_template_id=GOV-SQ006 | chunk_type=search_template
+site:{official_domain} penipuan "{topic}"
+
+GOV-SQ007
+query_template_id=GOV-SQ007 | chunk_type=search_template
+site:{official_domain} hoaks "{topic}"
+
+GOV-SQ008
+query_template_id=GOV-SQ008 | chunk_type=search_template
+site:{official_domain} APK "{topic}"
+
+GOV-SQ009
+query_template_id=GOV-SQ009 | chunk_type=search_template
+site:{official_domain} WhatsApp "{topic}"
+
+GOV-SQ010
+query_template_id=GOV-SQ010 | chunk_type=search_template
+"{agency_name}" "{sender_phone}"
+
+GOV-SQ011
+query_template_id=GOV-SQ011 | chunk_type=search_template
+"{agency_name}" "{suspicious_domain}"
+
+GOV-SQ012
+query_template_id=GOV-SQ012 | chunk_type=search_template
+"{program_name}" hoaks
+
+GOV-SQ013
+query_template_id=GOV-SQ013 | chunk_type=search_template
+"{program_name}" penipuan
+
+GOV-SQ014
+query_template_id=GOV-SQ014 | chunk_type=search_template
+"{claimed_official}" penipuan
+Placeholder official_domain hanya boleh diisi dari domain resmi yang ditemukan secara independen. Suspicious domain dari pesan tidak boleh dipromosikan menjadi official_domain.
+
+10. Decision and Output Guidance
+================================
+Output domain sebaiknya memuat institution_status, program_status, identity_status, channel_status, procedure_status, payment_status, overall_risk, evidence_sufficiency, missing_evidence, rules_used, evidence_ids, dan recommended_action. Nilai risk tidak boleh digunakan sebagai pengganti factual status.
+Status yang direkomendasikan untuk program adalah SUPPORTED, REFUTED, UNVERIFIED, atau OUTDATED. Status identity adalah VERIFIED, UNVERIFIED, IMPERSONATION_LIKELY, atau IMPERSONATION_CONFIRMED. Status channel adalah OFFICIAL, UNVERIFIED, MISMATCH, atau MALICIOUS. Status procedure adalah CONSISTENT, INCONSISTENT, atau UNVERIFIED.
+Jika program terbukti benar tetapi channel tidak resmi, output tetap dapat berbunyi program_status=SUPPORTED, channel_status=MISMATCH atau MALICIOUS, dan overall_risk=HIGH atau CRITICAL sesuai requested action.
+Evidence sufficiency tidak boleh berasal dari self-confidence LLM. Ia harus mempertimbangkan authority, claim-evidence relevance, temporal validity, source agreement, source independence, retrieval coverage, dan contradiction.
+
+11. Safe Actions and Do-Not-Do
+==============================
+
+GOV-SA001
+action_id=GOV-SA001 | chunk_type=safe_action
+Jangan klik, instal, transfer, atau mengirim data sensitif sampai identity, channel, dan procedure terverifikasi.
+
+GOV-SA002
+action_id=GOV-SA002 | chunk_type=safe_action
+Jangan memberikan OTP, PIN, password, CVV, recovery code, atau authentication secret.
+
+GOV-SA003
+action_id=GOV-SA003 | chunk_type=safe_action
+Temukan official website/contact melalui channel independen.
+
+GOV-SA004
+action_id=GOV-SA004 | chunk_type=safe_action
+Jika pembayaran diminta, verifikasi reason, payment channel, dan beneficiary.
+
+GOV-SA005
+action_id=GOV-SA005 | chunk_type=safe_action
+Jika user sudah memberi credential, instal APK, memberi remote access, atau kehilangan akses akun, aktifkan post-compromise workflow pada ATO rulebook.
+
+GOV-SA006
+action_id=GOV-SA006 | chunk_type=safe_action
+Jika dana sudah dikirim, prioritaskan bank/PJP dan kanal IASC resmi serta preservasi bukti.
+
+GOV-SA007
+action_id=GOV-SA007 | chunk_type=safe_action
+Jangan mengunggah raw PII atau dokumen sensitif ke community review tanpa redaction.
+
+12. Evidence Preservation
+=========================
+
+GOV-EV001
+evidence_rule_id=GOV-EV001 | chunk_type=evidence_requirement
+Screenshot atau chat lengkap beserta timestamp dan konteks sebelum/sesudah pesan penting.
+
+GOV-EV002
+evidence_rule_id=GOV-EV002 | chunk_type=evidence_requirement
+Nomor pengirim, username, email, profile URL, atau account identifier.
+
+GOV-EV003
+evidence_rule_id=GOV-EV003 | chunk_type=evidence_requirement
+URL/domain dan redirect target yang diekstrak secara aman.
+
+GOV-EV004
+evidence_rule_id=GOV-EV004 | chunk_type=evidence_requirement
+Nama file, extension, hash, dan metadata APK/file tanpa menjalankannya.
+
+GOV-EV005
+evidence_rule_id=GOV-EV005 | chunk_type=evidence_requirement
+Nomor surat, case, registration, transaction, atau reference.
+
+GOV-EV006
+evidence_rule_id=GOV-EV006 | chunk_type=evidence_requirement
+Rekening, wallet, QR merchant, atau payment destination.
+
+GOV-EV007
+evidence_rule_id=GOV-EV007 | chunk_type=evidence_requirement
+Bukti transfer, transaction ID, amount, timestamp, dan beneficiary.
+
+GOV-EV008
+evidence_rule_id=GOV-EV008 | chunk_type=evidence_requirement
+Official URLs dan evidence objects yang digunakan oleh verifier.
+OTP, PIN, password, CVV, recovery code, seed phrase, dan private key tidak boleh dipreservasi sebagai raw evidence.
+
+13. Source Registry
+===================
+
+GOV-S001
+source_id=GOV-S001 | institution=Direktorat Jenderal Pajak | year=2025 | source_type=authoritative_reference
+Document. Waspada Penipuan Sehubungan dengan Implementasi Coretax Direktorat Jenderal Pajak (Coretax DJP)
+URL. https://pajak.go.id/sites/default/files/2025-01/Waspada%20Penipuan%20Sehubungan%20dengan%20Implementasi%20Coretax%20Direktorat%20Jenderal%20Pajak%20%28Coretax%20DJP%29.pdf
+RAG relevance. Primary advisory untuk phishing, pharming, sniffing, social engineering, money mule, APK, look-alike link, dan consistency terhadap SOP.
+
+GOV-S002
+source_id=GOV-S002 | institution=OJK / Satgas PASTI | year=2025 | source_type=authoritative_reference
+Document. Waspada Penipuan Website Mengatasnamakan Indonesia Anti-Scam Centre (IASC)
+URL. https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Waspada-Penipuan-Website-Mengatasnamakan-Indonesia-Anti-Scam-Centre-IASC.aspx
+RAG relevance. Primary example bahwa authority anti-scam resmi dapat diimpersonasi; mendukung independent channel verification.
+
+GOV-S003
+source_id=GOV-S003 | institution=Direktorat Jenderal Pajak | year=2025 | source_type=authoritative_reference
+Document. Waspada Penipuan yang Mengatasnamakan Direktorat Jenderal Pajak
+URL. https://www.pajak.go.id/index.php/id/siaran-pers/waspada-penipuan-yang-mengatasnamakan-direktorat-jenderal-pajak
+RAG relevance. Primary advisory untuk fake officer, payment destination, aplikasi, link, SMS, WhatsApp, email, dan telepon.
+
+GOV-S004
+source_id=GOV-S004 | institution=Direktorat Jenderal Pajak | year=2025 | source_type=authoritative_reference
+Document. Waspada Penipuan Mengatasnamakan Direktorat Jenderal Pajak
+URL. https://www.pajak.go.id/index.php/id/pengumuman/waspada-penipuan-mengatasnamakan-direktorat-jenderal-pajak-1
+RAG relevance. Primary advisory untuk confirmation/reporting channels dan scam procedure comparison.
+
+GOV-S005
+source_id=GOV-S005 | institution=Kementerian Komunikasi dan Digital | year=2026 | source_type=authoritative_reference
+Document. Ini HOAKS! Bansos dari Kemenkeu Cair Mulai Februari 2026
+URL. https://www.komdigi.go.id/berita/berita-komdigi/detail/ini-hoaks-bansos-dari-kemenkeu-cair-mulai-februari-2026
+RAG relevance. Primary case advisory untuk fake aid, unofficial social account, collection of personal data, WhatsApp redirection, phishing, dan channel verification. Case-specific evidence tetap harus dicari live.
+
+GOV-S006
+source_id=GOV-S006 | institution=Bank Indonesia | year=2026 | source_type=authoritative_reference
+Document. Modul Edukasi Keuangan Digital Tingkat Dasar - Modul 5 Pelindungan terhadap Risiko
+URL. https://www.bi.go.id/id/edukasi/Documents/Buku-Panduan-Modul-Edukasi-Keuangan-Digital-Tingkat-Dasar-Modul-5-Pelindungan-terhadap-Risiko.pdf
+RAG relevance. Official stable guidance untuk phishing, vishing, smishing, spoofing, PIN/OTP/password protection, official channels, dan deepfake awareness.
+
+GOV-S007
+source_id=GOV-S007 | institution=OJK / Satgas PASTI | year=2025 | source_type=authoritative_reference
+Document. Satgas PASTI Imbau Masyarakat Waspadai Penipuan Menggunakan Artificial Intelligence
+URL. https://ojk.go.id/id/berita-dan-kegiatan/info-terkini/Pages/Satgas-PASTI-Imbau-Masyarakat-Waspadai-Penipuan-Menggunakan-AI.aspx
+RAG relevance. Primary advisory untuk voice cloning dan deepfake impersonation.
+
+14. Chunking and Retrieval Notes
+================================
+Unit chunk utama adalah satu Rule ID, satu Attack Pattern ID, satu Verification Question ID, satu Investigation Step ID, satu Search Template ID, satu Safe Action ID, atau satu Evidence Requirement ID. Jangan memotong berdasarkan jumlah token tetap apabila itu memisahkan metadata dari isi rule.
+Metadata minimal setiap chunk adalah rulebook_id, rulebook_version, domain, chunk_type, rule_id atau stable identifier, severity bila relevan, attack_pattern tags, trigger features, source_ids, rule_origin, freshness_dependency, country, dan language.
+Retriever direkomendasikan menggabungkan metadata filtering, BM25 lexical retrieval, dense vector retrieval, deterministic forced rules, deduplication berdasarkan Rule ID, dan reranking. Critical rules harus dapat di-force include ketika trigger terdeteksi.
+Planner menggunakan rule hasil retrieval untuk membuat claims_to_verify, critical_checks, required_evidence, preferred_sources, search_queries, interim_risk, dan interim_safe_action. Rulebook context tidak boleh digunakan sebagai bukti bahwa kasus saat ini pasti fraud.

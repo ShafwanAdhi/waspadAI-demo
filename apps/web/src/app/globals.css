@@ -480,7 +480,7 @@ button {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0;
+  gap: 0.72rem;
   font-size: 1.18rem;
   font-weight: 700;
 }
@@ -495,6 +495,31 @@ button {
   height: 2.35rem;
   object-fit: contain;
   filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.14));
+}
+
+.brand-copy {
+  display: grid;
+  gap: 0.08rem;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.brand-copy strong {
+  font-size: 1rem;
+  font-weight: 760;
+}
+
+.brand-copy span {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.site-header--dark .brand-copy,
+.site-header--dark .brand-copy span {
+  color: var(--white);
 }
 
 .main-nav {
@@ -2099,7 +2124,7 @@ button {
   .about-v2-hero,
   .about-v2-developer {
     grid-template-columns: 1fr;
-    width: min(100% - 32px, 720px);
+    width: min(100% - 48px, 720px);
   }
 
   .about-v2-hero {
@@ -2116,7 +2141,7 @@ button {
   }
 
   .about-v2-process {
-    padding: 94px 16px;
+    padding: 94px 24px;
   }
 
   .about-v2-process > header,
@@ -2161,6 +2186,11 @@ button {
 }
 
 @media (max-width: 560px) {
+  .about-v2-hero,
+  .about-v2-developer {
+    width: min(100% - 32px, 720px);
+  }
+
   .about-v2-hero {
     padding: 34px 0 48px;
   }
@@ -2174,6 +2204,11 @@ button {
     font-size: 1rem;
   }
 
+  .about-v2-hero__article {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
   .about-v2-hero__reader {
     margin-top: 28px;
     padding-top: 30px;
@@ -2185,6 +2220,8 @@ button {
   }
 
   .about-v2-process {
+    padding-right: 28px;
+    padding-left: 28px;
     padding-top: 78px;
     padding-bottom: 78px;
   }
@@ -2271,6 +2308,22 @@ button {
   .header-shell {
     width: min(100% - 32px, 1280px);
     height: 74px;
+  }
+
+  .brand {
+    gap: 0.55rem;
+  }
+
+  .brand-logo {
+    height: 2rem;
+  }
+
+  .brand-copy strong {
+    font-size: 0.92rem;
+  }
+
+  .brand-copy span {
+    font-size: 0.53rem;
   }
 
   .menu-button {

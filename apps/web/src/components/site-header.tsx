@@ -28,6 +28,10 @@ export function SiteHeader({ tone = "light" }: { tone?: "light" | "dark" }) {
             height={60}
             priority
           />
+          <span className="brand-copy" aria-hidden="true">
+            <strong>WaspadAI</strong>
+            <span>(Demo Version)</span>
+          </span>
         </Link>
 
         <nav className={`main-nav ${open ? "main-nav--open" : ""}`} aria-label="Navigasi utama">

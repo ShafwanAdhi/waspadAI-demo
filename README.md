@@ -67,6 +67,11 @@ cd ..\web
 npm run api:types
 ```
 
+Integrasi aplikasi Android production tidak memanggil FastAPI WaspadAI secara
+langsung. Kontrak Supabase Auth, pemeriksaan synchronous, history privat,
+publikasi komunitas, dan voting tersedia di
+[`docs/android-api-contract.md`](docs/android-api-contract.md).
+
 ## Deployment
 
 Stack container dapat dijalankan dari root repository:

@@ -17,7 +17,12 @@ class FakeGroqService:
     provider_name = "fake-search"
     configured = True
 
+    def __init__(self):
+        self.plan_calls = 0
+        self.verify_calls = 0
+
     async def plan(self, case, signals, rulebook, escalation=False):
+        self.plan_calls += 1
         assert case.input_type == "TEXT"
         assert case.safe_text
         assert "general_information_integrity" in signals.domains
@@ -75,6 +80,7 @@ class FakeGroqService:
         ]
 
     async def verify_and_generate(self, planner, evidence, sufficiency, rulebook):
+        self.verify_calls += 1
         return VerificationDecision(
             claims=[],
             overall_verdict="UNVERIFIED" if sufficiency < 0.58 else "REFUTED",
@@ -124,3 +130,25 @@ def test_live_text_uses_the_shared_rulebook_evidence_and_verifier_pipeline():
     ]
     assert response.rulebook.selected_count > 0
     assert response.evidence
+
+
+def test_narrative_output_mode_does_not_add_groq_calls():
+    pipeline = FactCheckPipeline(Settings(groq_api_key="test-key"))
+    fake = FakeGroqService()
+    pipeline.groq = fake
+    pipeline.web_search = fake
+
+    response = asyncio.run(
+        pipeline.verify_text(
+            text="Pemerintah disebut memberikan bantuan Rp5 juta pada tahun 2026.",
+            question="Apakah kabar ini benar?",
+            source_url=None,
+            sender_context="FORWARDED",
+            output_mode="BOTH",
+        )
+    )
+
+    assert fake.plan_calls == 1
+    assert fake.verify_calls == 1
+    assert response.presentation.requested_mode == "BOTH"
+    assert response.presentation.narrative is not None

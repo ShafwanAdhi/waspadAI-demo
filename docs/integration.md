@@ -24,6 +24,11 @@ Frontend tidak menyimpan atau menerima API key Groq. Browser selalu mengirim per
 
 Keduanya menghasilkan kontrak `VerificationResponse` yang sama. Perbedaan modality hanya terjadi sebelum `CaseContext`; rulebook, planner, evidence retrieval, sufficiency, guardrail, dan penyajian hasil tetap setara.
 
+Frontend mengirim `output_mode=BOTH` untuk request dari website. Backend tetap
+menjalankan satu pipeline verifikasi yang sama, lalu menambahkan presentasi
+naratif secara lokal dari hasil kanonik; toggle poin-poin/naratif di browser
+tidak memicu request baru dan tidak menambah panggilan Groq.
+
 ## Susunan hasil bertingkat
 
 Urutan publik sengaja berbeda dari urutan internal pipeline:
@@ -40,6 +45,20 @@ Urutan publik sengaja berbeda dari urutan internal pipeline:
 10. **Disclaimer, privasi, dan request ID** — konteks audit ringan di bagian akhir.
 
 `rulebook`, `pipeline`, detail model, dan trace tidak ditampilkan di hasil publik. Semua itu tetap tersedia di `/debug` pada development agar tuning tidak membebani atau membingungkan pengguna. `community_status` juga belum ditampilkan sampai alur consent dan review komunitas benar-benar tersedia.
+
+Mode naratif menampilkan paragraf ringkas dari `presentation.narrative`, tetapi
+tetap mempertahankan sumber utama agar pengguna masih bisa memeriksa asal bukti.
+Mode poin-poin memakai field structured utama seperti sebelumnya.
+
+Di mode naratif, risiko rendah dan sedang tidak otomatis disebutkan agar hasil
+tidak terasa berlebihan untuk kasus biasa. Risiko tinggi dan kritis tetap
+ditampilkan sebagai peringatan jelas, sementara kasus `UNVERIFIED` harus memakai
+bahasa "belum dapat dipastikan" dan bukan "terbantahkan".
+
+Backend menjalankan final consistency gate sebelum response dikirim. Gate ini
+memastikan low sufficiency pada kasus faktual non-scam menjadi `UNVERIFIED`,
+headline dan alasan tetap non-final, evidence ID tidak mengarah ke bukti yang
+tidak ada, dan status `requires_human_review` konsisten dengan coverage bukti.
 
 ## Kontrak API
 

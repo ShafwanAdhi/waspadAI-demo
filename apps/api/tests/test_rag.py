@@ -13,7 +13,9 @@ from app.services.evidence_store import LocalVerifiedEvidenceStore
 from app.services.input_adapters import build_text_case
 from app.services.pipeline import (
     _enforce_scam_message_decision,
+    _enforce_final_decision_consistency,
     _enforce_rulebook_safety,
+    _normalize_mixed_evidence_decision,
     calculate_evidence_sufficiency,
     prepare_evidence_for_decision,
 )
@@ -458,6 +460,78 @@ def test_impersonation_link_message_gets_scam_security_decision():
     assert decision.requires_human_review is False
     assert decision.headline == "Pesan patut diduga penipuan atau phishing"
     assert decision.recommended_actions[0].code == "DO_NOT_OPEN_LINK"
+
+
+def test_low_sufficiency_forces_non_final_factual_decision():
+    case = case_context("Ada klaim bahwa pejabat X turun jabatan.")
+    signals = extract_case_signals(case)
+    rag = RulebookRAG(Settings())
+    rulebook = asyncio.run(rag.retrieve(case.safe_text, signals))
+    planner = deterministic_fallback_plan(case, signals, rulebook, Settings())
+    claim_id = planner.claims[0].id
+    evidence = [_evidence("ev_1", claim_id, "REFUTES", "Media A")]
+    decision = VerificationDecision(
+        claims=[
+            {
+                "claim_id": claim_id,
+                "verdict": "REFUTED",
+                "supporting_evidence": [],
+                "refuting_evidence": ["ev_1"],
+                "contradiction_level": "HIGH",
+                "reason": "Bukti membantah klaim.",
+            }
+        ],
+        overall_verdict="REFUTED",
+        risk_level="LOW",
+        evidence_sufficiency=0.41,
+        requires_human_review=False,
+        headline="Klaim terbantahkan",
+        what_checked=[planner.claims[0].text],
+        why=["Bukti membantah klaim."],
+        recommended_actions=[],
+        uncertainty="Bukti membantah klaim utama.",
+    )
+
+    _enforce_final_decision_consistency(decision, planner, evidence, 0.58)
+
+    assert decision.overall_verdict == "UNVERIFIED"
+    assert decision.requires_human_review is True
+    assert decision.headline == "Bukti belum cukup untuk memastikan klaim"
+    assert decision.claims[0].verdict == "UNVERIFIED"
+    assert decision.recommended_actions[0].code == "RETURN_UNVERIFIED"
+
+
+def test_mixed_evidence_normalization_requires_sufficient_final_claims():
+    decision = VerificationDecision(
+        claims=[
+            {
+                "claim_id": "claim_1",
+                "verdict": "UNVERIFIED",
+                "supporting_evidence": [],
+                "refuting_evidence": [],
+                "contradiction_level": "NONE",
+                "reason": "Belum cukup.",
+            }
+        ],
+        overall_verdict="UNVERIFIED",
+        risk_level="LOW",
+        evidence_sufficiency=0.42,
+        requires_human_review=True,
+        headline="Pemeriksaan belum dapat diselesaikan secara penuh",
+        what_checked=["Klaim satu"],
+        why=[],
+        recommended_actions=[],
+        uncertainty="",
+    )
+    evidence = [
+        _evidence("ev_s", "claim_1", "SUPPORTS", "Media A"),
+        _evidence("ev_r", "claim_2", "REFUTES", "Media B"),
+    ]
+
+    _normalize_mixed_evidence_decision(decision, evidence, 0.58)
+
+    assert decision.overall_verdict == "UNVERIFIED"
+    assert decision.requires_human_review is True
 
 
 def test_fake_kejaksaaan_tilang_link_is_government_scam_signal():

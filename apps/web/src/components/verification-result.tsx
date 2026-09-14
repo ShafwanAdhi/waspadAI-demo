@@ -77,7 +77,13 @@ function ResultSection({
   );
 }
 
-export function VerificationResult({ result }: { result: VerificationResponse }) {
+export function VerificationResult({
+  result,
+  displayMode = "STRUCTURED",
+}: {
+  result: VerificationResponse;
+  displayMode?: "STRUCTURED" | "NARRATIVE";
+}) {
   const isHighRisk = result.risk_level === "HIGH" || result.risk_level === "CRITICAL";
   const isLikelyScam = (
     (result.dimensions.scam_risk === "HIGH" || result.dimensions.scam_risk === "CRITICAL")
@@ -105,6 +111,7 @@ export function VerificationResult({ result }: { result: VerificationResponse })
     ) === index;
   });
   const score = Math.round(Math.max(0, Math.min(1, result.evidence_sufficiency)) * 100);
+  const narrative = result.presentation.narrative;
 
   return (
     <article
@@ -161,6 +168,37 @@ export function VerificationResult({ result }: { result: VerificationResponse })
         </aside>
       )}
 
+      {displayMode === "NARRATIVE" && narrative ? (
+        <>
+          <ResultSection eyebrow="Naratif" title="Penjelasan singkat">
+            <div className="narrative-result">
+              {narrative.paragraphs.map((paragraph) => (
+                <p key={paragraph}>{paragraph}</p>
+              ))}
+            </div>
+          </ResultSection>
+
+          <ResultSection eyebrow="Referensi" title="Sumber utama">
+            {uniqueEvidence.length > 0 ? (
+              <ul className="narrative-sources">
+                {uniqueEvidence.slice(0, 4).map((item) => (
+                  <li key={item.id}>
+                    <a href={item.url} target="_blank" rel="noreferrer">
+                      <span>{item.publisher}</span>
+                      <strong>{item.title}</strong>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="empty-evidence">
+                <p>Belum ada bukti yang cukup untuk ditampilkan.</p>
+              </div>
+            )}
+          </ResultSection>
+        </>
+      ) : (
+        <>
       <div className="report-two-column">
         <ResultSection eyebrow="Penjelasan" title="Mengapa hasilnya demikian">
           <ul className="report-list report-list--numbered">
@@ -267,6 +305,8 @@ export function VerificationResult({ result }: { result: VerificationResponse })
           ))}
         </ol>
       </ResultSection>
+        </>
+      )}
     </article>
   );
 }

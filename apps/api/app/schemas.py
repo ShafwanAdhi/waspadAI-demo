@@ -17,6 +17,7 @@ RiskLevel = Literal["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]
 Stance = Literal["SUPPORTS", "REFUTES", "CONTEXT", "UNKNOWN"]
 RetrievalPhase = Literal["DETECTION", "INVESTIGATION", "DECISION", "RESPONSE"]
 InputType = Literal["IMAGE", "TEXT"]
+OutputMode = Literal["STRUCTURED", "NARRATIVE", "BOTH"]
 TextContentType = Literal[
     "NEWS_ARTICLE",
     "NEWS_EXCERPT",
@@ -111,17 +112,7 @@ class TextVerificationRequest(StrictModel):
     source_url: str | None = Field(default=None, max_length=2048)
     sender_context: SenderContext = "UNKNOWN"
     page_context: PageContext | None = None
-
-
-class ExtensionInstallationRequest(StrictModel):
-    extension_version: str = Field(default="unknown", max_length=80)
-
-
-class ExtensionInstallationResponse(StrictModel):
-    installation_id: str
-    installation_token: str
-    token_type: Literal["Bearer"]
-    expires_at: str
+    output_mode: OutputMode = "STRUCTURED"
 
 
 class CaseContext(StrictModel):
@@ -426,6 +417,18 @@ class InputSummary(StrictModel):
     pii_types_redacted: list[str]
 
 
+class NarrativePresentation(StrictModel):
+    text: str
+    summary: str
+    paragraphs: list[str]
+
+
+class ResponsePresentation(StrictModel):
+    requested_mode: OutputMode
+    structured: bool
+    narrative: NarrativePresentation | None
+
+
 class VerificationResponse(StrictModel):
     request_id: str
     trace_id: str
@@ -450,4 +453,5 @@ class VerificationResponse(StrictModel):
     privacy_notice: str
     rulebook: RulebookTrace
     pipeline: list[PipelineStage]
+    presentation: ResponsePresentation
     disclaimer: str

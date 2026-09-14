@@ -3,7 +3,7 @@
   "info": {
     "title": "WaspadAI API",
     "description": "API pemeriksaan multimodal berbasis bukti dan rulebook.",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "paths": {
     "/api/health": {
@@ -19,222 +19,6 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Health Api Health Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/extension/v1/health": {
-      "get": {
-        "summary": "Extension Health",
-        "operationId": "extension_health_api_extension_v1_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Extension Health Api Extension V1 Health Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/extension/v1/installations": {
-      "post": {
-        "summary": "Create Extension Installation",
-        "operationId": "create_extension_installation_api_extension_v1_installations_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExtensionInstallationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExtensionInstallationResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/extension/v1/installations/refresh": {
-      "post": {
-        "summary": "Refresh Extension Installation",
-        "operationId": "refresh_extension_installation_api_extension_v1_installations_refresh_post",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ExtensionInstallationResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/extension/v1/verify/text": {
-      "post": {
-        "summary": "Verify Extension Text",
-        "operationId": "verify_extension_text_api_extension_v1_verify_text_post",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TextVerificationRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerificationResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/extension/v1/verify/image": {
-      "post": {
-        "summary": "Verify Extension Image",
-        "operationId": "verify_extension_image_api_extension_v1_verify_image_post",
-        "parameters": [
-          {
-            "name": "authorization",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Authorization"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_verify_extension_image_api_extension_v1_verify_image_post"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerificationResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -524,25 +308,6 @@
         ],
         "title": "AssessmentDimensions"
       },
-      "Body_verify_extension_image_api_extension_v1_verify_image_post": {
-        "properties": {
-          "image": {
-            "type": "string",
-            "format": "binary",
-            "title": "Image"
-          },
-          "question": {
-            "type": "string",
-            "title": "Question",
-            "default": "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"
-          }
-        },
-        "type": "object",
-        "required": [
-          "image"
-        ],
-        "title": "Body_verify_extension_image_api_extension_v1_verify_image_post"
-      },
       "Body_verify_image_api_v1_verify_image_post": {
         "properties": {
           "image": {
@@ -554,6 +319,16 @@
             "type": "string",
             "title": "Question",
             "default": "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"
+          },
+          "output_mode": {
+            "type": "string",
+            "enum": [
+              "STRUCTURED",
+              "NARRATIVE",
+              "BOTH"
+            ],
+            "title": "Output Mode",
+            "default": "STRUCTURED"
           }
         },
         "type": "object",
@@ -573,6 +348,16 @@
             "type": "string",
             "title": "Question",
             "default": "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"
+          },
+          "output_mode": {
+            "type": "string",
+            "enum": [
+              "STRUCTURED",
+              "NARRATIVE",
+              "BOTH"
+            ],
+            "title": "Output Mode",
+            "default": "STRUCTURED"
           }
         },
         "type": "object",
@@ -683,49 +468,6 @@
           "verification_status"
         ],
         "title": "Evidence"
-      },
-      "ExtensionInstallationRequest": {
-        "properties": {
-          "extension_version": {
-            "type": "string",
-            "maxLength": 80,
-            "title": "Extension Version",
-            "default": "unknown"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "title": "ExtensionInstallationRequest"
-      },
-      "ExtensionInstallationResponse": {
-        "properties": {
-          "installation_id": {
-            "type": "string",
-            "title": "Installation Id"
-          },
-          "installation_token": {
-            "type": "string",
-            "title": "Installation Token"
-          },
-          "token_type": {
-            "type": "string",
-            "const": "Bearer",
-            "title": "Token Type"
-          },
-          "expires_at": {
-            "type": "string",
-            "title": "Expires At"
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "installation_id",
-          "installation_token",
-          "token_type",
-          "expires_at"
-        ],
-        "title": "ExtensionInstallationResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -845,6 +587,33 @@
         ],
         "title": "InputSummary"
       },
+      "NarrativePresentation": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "paragraphs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paragraphs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text",
+          "summary",
+          "paragraphs"
+        ],
+        "title": "NarrativePresentation"
+      },
       "PageContext": {
         "properties": {
           "title": {
@@ -950,6 +719,41 @@
           "detail"
         ],
         "title": "RecommendedAction"
+      },
+      "ResponsePresentation": {
+        "properties": {
+          "requested_mode": {
+            "type": "string",
+            "enum": [
+              "STRUCTURED",
+              "NARRATIVE",
+              "BOTH"
+            ],
+            "title": "Requested Mode"
+          },
+          "structured": {
+            "type": "boolean",
+            "title": "Structured"
+          },
+          "narrative": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NarrativePresentation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requested_mode",
+          "structured",
+          "narrative"
+        ],
+        "title": "ResponsePresentation"
       },
       "RulebookTrace": {
         "properties": {
@@ -1085,6 +889,16 @@
                 "type": "null"
               }
             ]
+          },
+          "output_mode": {
+            "type": "string",
+            "enum": [
+              "STRUCTURED",
+              "NARRATIVE",
+              "BOTH"
+            ],
+            "title": "Output Mode",
+            "default": "STRUCTURED"
           }
         },
         "additionalProperties": false,
@@ -1259,6 +1073,9 @@
             "type": "array",
             "title": "Pipeline"
           },
+          "presentation": {
+            "$ref": "#/components/schemas/ResponsePresentation"
+          },
           "disclaimer": {
             "type": "string",
             "title": "Disclaimer"
@@ -1290,6 +1107,7 @@
           "privacy_notice",
           "rulebook",
           "pipeline",
+          "presentation",
           "disclaimer"
         ],
         "title": "VerificationResponse"

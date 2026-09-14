@@ -6,11 +6,15 @@ Base URL production:
 https://waspadai.shafwan.digital
 ```
 
-WaspadAI memiliki tiga kelompok endpoint:
+WaspadAI memiliki dua kelompok endpoint:
 
 - `/api/v1/*` dipakai frontend publik WaspadAI.
 - `/api/internal/v1/*` dipakai integrasi server-to-server dan wajib memakai `X-Waspadai-API-Key`.
-- `/api/extension/v1/*` dipakai Chrome extension dan memakai anonymous installation Bearer token.
+
+Kontrak untuk aplikasi Android berada di
+[`android-api-contract.md`](android-api-contract.md). Android tidak memanggil
+WaspadAI secara langsung; Android memanggil FastAPI aplikasi yang memvalidasi
+Supabase Auth, kemudian FastAPI aplikasi memanggil endpoint internal WaspadAI.
 
 Health check umum:
 
@@ -23,30 +27,41 @@ curl https://waspadai.shafwan.digital/api/health
 | Method | Path | Auth | Fungsi |
 | --- | --- | --- | --- |
 | `GET` | `/api/health` | Tidak | Health backend utama |
-| `GET` | `/api/extension/v1/health` | Tidak | Health gateway extension tanpa detail sensitif |
+| `POST` | `/api/v1/verify/text` | Tidak | Verifikasi teks untuk website demo anonim |
+| `POST` | `/api/v1/verify/image` | Tidak | Verifikasi gambar untuk website demo anonim |
 | `POST` | `/api/internal/v1/verify/text` | `X-Waspadai-API-Key` | Verifikasi teks dari service lain |
 | `POST` | `/api/internal/v1/verify/image` | `X-Waspadai-API-Key` | Verifikasi gambar dari service lain |
-| `POST` | `/api/extension/v1/installations` | Tidak, rate limited per IP | Membuat anonymous installation token |
-| `POST` | `/api/extension/v1/installations/refresh` | Bearer installation token | Merotasi token instalasi |
-| `POST` | `/api/extension/v1/verify/text` | Bearer installation token | Verifikasi selected text/manual text |
-| `POST` | `/api/extension/v1/verify/image` | Bearer installation token | Verifikasi gambar dari extension |
+
+## Mode output
+
+Endpoint verifikasi mendukung tiga nilai `output_mode`:
+
+| Mode | Kegunaan |
+| --- | --- |
+| `STRUCTURED` | Default. Mengembalikan hasil poin-poin seperti verdict, alasan, bukti, sumber, dan tindakan. |
+| `NARRATIVE` | Menambahkan `presentation.narrative` berisi penjelasan berbentuk teks natural seperti jawaban chatbot. |
+| `BOTH` | Mengembalikan structured fields dan naratif sekaligus, cocok untuk frontend yang punya toggle tampilan tanpa request ulang. |
+
+Mode naratif tidak menambah panggilan Groq. Teks naratif disusun secara lokal
+dari hasil verifikasi kanonik yang sudah ada, sehingga verdict, risiko, bukti,
+uncertainty, dan rekomendasi tetap sama dengan mode structured.
+
+Untuk menjaga hasil tetap ramah dibaca, mode naratif tidak selalu menampilkan
+tingkat risiko. Risiko `LOW` dan `MEDIUM` tidak otomatis disebutkan di teks
+naratif, sedangkan `HIGH` dan `CRITICAL` selalu muncul sebagai peringatan
+eksplisit. Jika verdict `UNVERIFIED`, naratif wajib memakai bahasa belum final
+dan tidak boleh terdengar seperti klaim sudah terbukti salah atau benar.
+
+Pada JSON request teks, kirim `output_mode` di body. Pada multipart request
+gambar, kirim `output_mode` sebagai form field.
 
 ## Environment variables
 
 ```env
 WASPADAI_API_KEYS=key_project_pertama,key_project_kedua
-EXTENSION_INSTALLATION_STORE_PATH=runtime/extension_installations.json
-EXTENSION_TOKEN_LIFETIME_DAYS=90
-EXTENSION_TOKEN_OVERLAP_SECONDS=300
-EXTENSION_REGISTRATION_IP_LIMIT_PER_HOUR=20
-EXTENSION_TEXT_INSTALLATION_LIMIT_PER_MINUTE=10
-EXTENSION_IMAGE_INSTALLATION_LIMIT_PER_MINUTE=4
-EXTENSION_IP_VERIFY_LIMIT_PER_MINUTE=30
-EXTENSION_CONCURRENT_REQUESTS_PER_INSTALLATION=2
-EXTENSION_ALLOWED_ORIGINS=chrome-extension://extension_id_dev,chrome-extension://extension_id_prod
 ```
 
-Jangan menaruh internal API key atau token instalasi di repository, log publik,
+Jangan menaruh internal API key di repository, log publik, aplikasi Android,
 frontend browser, atau variabel `NEXT_PUBLIC_*`.
 
 ## Batas input
@@ -86,6 +101,7 @@ curl -X POST "https://waspadai.shafwan.digital/api/internal/v1/verify/text" \
     "text": "Selamat, Anda mendapat bantuan Rp5 juta. Klik link berikut untuk klaim hadiah.",
     "question": "Apakah isi teks ini benar dan aman ditindaklanjuti?",
     "sender_context": "UNKNOWN_NUMBER",
+    "output_mode": "BOTH",
     "page_context": {
       "title": "Contoh halaman",
       "before": "Konteks sebelum teks pilihan.",
@@ -100,105 +116,9 @@ Verifikasi gambar:
 curl -X POST "https://waspadai.shafwan.digital/api/internal/v1/verify/image" \
   -H "X-Waspadai-API-Key: key_project_pertama" \
   -F "image=@contoh.png" \
-  -F "question=Tolong cek apakah pesan pada gambar ini penipuan atau bukan"
+  -F "question=Tolong cek apakah pesan pada gambar ini penipuan atau bukan" \
+  -F "output_mode=BOTH"
 ```
-
-## Chrome Extension API
-
-Registration tidak meminta fingerprint, email, riwayat browsing, atau hardware
-identifier. Server membuat `installation_id` dan token opaque; token yang
-disimpan di server adalah hash.
-
-Membuat instalasi:
-
-```bash
-curl -X POST "https://waspadai.shafwan.digital/api/extension/v1/installations" \
-  -H "Content-Type: application/json" \
-  -d '{"extension_version":"0.1.0"}'
-```
-
-Response `201 Created`:
-
-```json
-{
-  "installation_id": "inst_01ab23cd45ef67ab89cd01ef",
-  "installation_token": "opaque-server-issued-token",
-  "token_type": "Bearer",
-  "expires_at": "2026-12-31T00:00:00Z"
-}
-```
-
-Refresh token:
-
-```bash
-curl -X POST "https://waspadai.shafwan.digital/api/extension/v1/installations/refresh" \
-  -H "Authorization: Bearer INSTALLATION_TOKEN"
-```
-
-Token lama masih diterima selama overlap singkat sesuai
-`EXTENSION_TOKEN_OVERLAP_SECONDS`, lalu tidak berlaku.
-
-Verifikasi selected text:
-
-```bash
-curl -X POST "https://waspadai.shafwan.digital/api/extension/v1/verify/text" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer INSTALLATION_TOKEN" \
-  -d '{
-    "text": "Teks yang dipilih pengguna",
-    "question": "Apakah informasi ini benar dan aman?",
-    "source_url": "https://example.com/article",
-    "sender_context": "UNKNOWN",
-    "page_context": {
-      "title": "Judul halaman",
-      "before": "Konteks terbatas sebelum teks yang dipilih.",
-      "after": "Konteks terbatas setelah teks yang dipilih."
-    }
-  }'
-```
-
-Verifikasi gambar:
-
-```bash
-curl -X POST "https://waspadai.shafwan.digital/api/extension/v1/verify/image" \
-  -H "Authorization: Bearer INSTALLATION_TOKEN" \
-  -F "image=@contoh.png" \
-  -F "question=Tolong cek apakah pesan pada gambar ini penipuan atau bukan"
-```
-
-Response sukses extension tidak dibungkus `data` atau `result`; schema sama
-dengan `VerificationResponse` production.
-
-## Public error envelope extension
-
-Semua error endpoint `/api/extension/v1/*` memakai envelope:
-
-```json
-{
-  "error": {
-    "code": "RATE_LIMITED",
-    "message": "Batas verifikasi sementara tercapai.",
-    "retry_after_seconds": 60,
-    "request_id": "req_01ab23cd45ef"
-  }
-}
-```
-
-Kode error minimum:
-
-| Code | Status |
-| --- | --- |
-| `INVALID_INSTALLATION_TOKEN` | `401` |
-| `INSTALLATION_TOKEN_EXPIRED` | `401` |
-| `INSTALLATION_BLOCKED` | `403` |
-| `RATE_LIMITED` | `429` |
-| `VALIDATION_ERROR` | `422` |
-| `PAYLOAD_TOO_LARGE` | `413` |
-| `UNSUPPORTED_MEDIA_TYPE` | `415` |
-| `UPSTREAM_FAILURE` | `502` |
-| `SERVICE_UNAVAILABLE` | `503` |
-
-Response `429` juga mengirim header `Retry-After`.
 
 ## Field response penting
 
@@ -215,6 +135,14 @@ Response `429` juga mengirim header `Retry-After`.
 | `sources` | Daftar sumber yang bisa ditampilkan ke pengguna |
 | `recommended_actions` | Saran tindakan untuk pengguna |
 | `requires_human_review` | `true` jika bukti belum cukup atau kasus perlu dicek manual |
+| `presentation.requested_mode` | Mode output yang diminta client: `STRUCTURED`, `NARRATIVE`, atau `BOTH` |
+| `presentation.narrative` | Teks naratif lokal; bernilai `null` jika mode `STRUCTURED` |
+
+Catatan keputusan: `verdict`, `risk_level`, `evidence_sufficiency`, dan
+`requires_human_review` adalah sumbu yang berbeda. Untuk kasus faktual non-scam,
+bukti di bawah threshold membuat response menjadi `UNVERIFIED` dan
+`requires_human_review=true`. Risiko `MEDIUM` tetap tersedia di JSON, tetapi mode
+naratif hanya menampilkan peringatan eksplisit untuk `HIGH` dan `CRITICAL`.
 
 ## Contoh JSON response produksi
 
@@ -326,14 +254,14 @@ Requires human review:
 }
 ```
 
-Respons error extension:
+Respons error WaspadAI:
 
 ```json
 {
-  "error": {
-    "code": "INVALID_INSTALLATION_TOKEN",
-    "message": "Header Authorization Bearer wajib diisi.",
-    "request_id": "req_01ab23cd45ef"
-  }
+  "detail": "API key internal tidak valid."
 }
 ```
+
+FastAPI aplikasi yang dikonsumsi Android memakai error envelope stabil yang
+berbeda. Kontraknya dijelaskan di
+[`android-api-contract.md`](android-api-contract.md#10-error-envelope).

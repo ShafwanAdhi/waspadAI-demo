@@ -16,9 +16,11 @@ from app.schemas import (
     Evidence,
     InputSummary,
     MediaMetadata,
+    OutputMode,
     PipelineStage,
     PlannedClaim,
     PlannerOutput,
+    ResponsePresentation,
     RulebookResult,
     RecommendedAction,
     SourceView,
@@ -48,6 +50,7 @@ from app.services.planner_guardrails import (
     deterministic_fallback_plan,
     validate_and_repair_plan,
 )
+from app.services.presentation import build_narrative_presentation
 
 
 RECOVERABLE_MODEL_ERRORS = (
@@ -111,6 +114,7 @@ class FactCheckPipeline:
         metadata: MediaMetadata,
         filename: str,
         question: str,
+        output_mode: OutputMode = "STRUCTURED",
     ) -> VerificationResponse:
         request_id = f"req_{uuid.uuid4().hex[:12]}"
         trace_id = f"trace_{uuid.uuid4().hex[:16]}"
@@ -226,6 +230,7 @@ class FactCheckPipeline:
             stages=stages,
             request_id=request_id,
             trace_id=trace_id,
+            output_mode=output_mode,
         )
 
     async def verify_text(
@@ -235,6 +240,7 @@ class FactCheckPipeline:
         source_url: str | None,
         sender_context: str,
         page_context: PageContext | None = None,
+        output_mode: OutputMode = "STRUCTURED",
     ) -> VerificationResponse:
         request_id = f"req_{uuid.uuid4().hex[:12]}"
         trace_id = f"trace_{uuid.uuid4().hex[:16]}"
@@ -297,6 +303,7 @@ class FactCheckPipeline:
             stages=stages,
             request_id=request_id,
             trace_id=trace_id,
+            output_mode=output_mode,
         )
 
     async def _verify_case(
@@ -306,6 +313,7 @@ class FactCheckPipeline:
         stages: list[PipelineStage],
         request_id: str,
         trace_id: str,
+        output_mode: OutputMode,
     ) -> VerificationResponse:
         assert self.groq is not None
 
@@ -750,7 +758,13 @@ class FactCheckPipeline:
             decision = _fallback_verification_decision(planner, evidence, sufficiency)
         _enforce_rulebook_safety(decision, rulebook)
         _enforce_scam_message_decision(decision, case, signals, planner)
-        _normalize_mixed_evidence_decision(decision, evidence)
+        _normalize_mixed_evidence_decision(decision, evidence, self.settings.evidence_sufficiency_threshold)
+        _enforce_final_decision_consistency(
+            decision,
+            planner,
+            evidence,
+            self.settings.evidence_sufficiency_threshold,
+        )
         verifier_ms = _elapsed_ms(verifier_started)
         self.debug_traces.add_stage(
             trace_id,
@@ -801,6 +815,7 @@ class FactCheckPipeline:
             evidence=evidence,
             decision=decision,
             rulebook=rulebook,
+            output_mode=output_mode,
         )
         self.debug_traces.add_stage(
             trace_id,
@@ -825,7 +840,25 @@ class FactCheckPipeline:
         case: CaseContext = data.pop("case")
         signals: CaseSignals = data.pop("signals")
         planner: PlannerOutput = data.pop("planner")
+        output_mode: OutputMode = data.pop("output_mode")
         sufficiency = decision.evidence_sufficiency
+        evidence_view = evidence[:8]
+        sufficiency_label = _sufficiency_label(sufficiency, decision, planner)
+        narrative = (
+            build_narrative_presentation(
+                verdict=decision.overall_verdict,
+                risk_level=decision.risk_level,
+                headline=decision.headline,
+                why=decision.why,
+                evidence=evidence_view,
+                evidence_sufficiency_label=sufficiency_label,
+                recommended_actions=decision.recommended_actions,
+                uncertainty=decision.uncertainty,
+                requires_human_review=decision.requires_human_review,
+            )
+            if output_mode in {"NARRATIVE", "BOTH"}
+            else None
+        )
         return VerificationResponse(
             request_id=data["request_id"],
             trace_id=data["trace_id"],
@@ -841,23 +874,33 @@ class FactCheckPipeline:
             dimensions=_assessment_dimensions(case, signals, planner, decision),
             headline=decision.headline,
             evidence_sufficiency=sufficiency,
-            evidence_sufficiency_label=_sufficiency_label(sufficiency, decision, planner),
+            evidence_sufficiency_label=sufficiency_label,
             what_checked=decision.what_checked,
             why=decision.why,
-            evidence=evidence[:8],
+            evidence=evidence_view,
             recommended_actions=decision.recommended_actions,
             sources=_source_views(evidence),
             uncertainty=decision.uncertainty,
             requires_human_review=decision.requires_human_review,
-            community_status="ELIGIBLE_WITH_CONSENT" if decision.requires_human_review else "NOT_REQUIRED",
+            community_status=(
+                "ELIGIBLE_WITH_CONSENT"
+                if decision.overall_verdict == "UNVERIFIED" or decision.requires_human_review
+                else "NOT_REQUIRED"
+            ),
             privacy_notice=(
-                "Raw input diproses sementara di memori aplikasi dan dikirim ke layanan model Groq "
-                "pada mode live; tidak disimpan atau dipublikasikan otomatis. Pada development, data "
-                "turunan yang sudah teredaksi dapat berada sementara di debug trace lokal. Eskalasi komunitas "
-                "hanya boleh dilakukan setelah redaksi PII dan persetujuan pengguna."
+                "WaspadAI memproses raw input sementara dan mengirimkannya ke layanan model Groq "
+                "pada mode live; service WaspadAI tidak menyimpan atau mempublikasikannya otomatis. "
+                "Aplikasi pemanggil dapat menerapkan kebijakan history sendiri. Pada development, data "
+                "turunan yang sudah teredaksi dapat berada sementara di debug trace lokal. Publikasi "
+                "komunitas hanya boleh dilakukan setelah redaksi PII dan persetujuan pengguna."
             ),
             rulebook=rulebook.trace,
             pipeline=data["stages"],
+            presentation=ResponsePresentation(
+                requested_mode=output_mode,
+                structured=output_mode in {"STRUCTURED", "BOTH"},
+                narrative=narrative,
+            ),
             disclaimer="Fact-check adalah dukungan keputusan, bukan jaminan. Verifikasi ulang untuk keputusan berisiko tinggi.",
         )
 
@@ -1611,29 +1654,111 @@ def _merge_actions(
 def _normalize_mixed_evidence_decision(
     decision: VerificationDecision,
     evidence: list[Evidence],
+    sufficiency_threshold: float,
 ) -> None:
+    if decision.evidence_sufficiency < sufficiency_threshold:
+        return
     supported_claims = {
-        item.claim_id
-        for item in evidence
-        if item.stance == "SUPPORTS" and item.relevance >= 0.55
+        claim.claim_id
+        for claim in decision.claims
+        if claim.verdict in {"SUPPORTED", "PARTLY_TRUE"} and claim.supporting_evidence
     }
     refuted_claims = {
-        item.claim_id
-        for item in evidence
-        if item.stance == "REFUTES" and item.relevance >= 0.55
+        claim.claim_id
+        for claim in decision.claims
+        if claim.verdict == "REFUTED" and claim.refuting_evidence
     }
     if not supported_claims or not refuted_claims:
         return
-    if supported_claims - refuted_claims and decision.overall_verdict in {"REFUTED", "UNVERIFIED", "PARTLY_TRUE"}:
+    if supported_claims - refuted_claims and decision.overall_verdict in {"REFUTED", "PARTLY_TRUE"}:
         decision.overall_verdict = "MISLEADING"
-        decision.risk_level = "MEDIUM" if decision.risk_level in {"LOW", "UNKNOWN"} else decision.risk_level
         decision.requires_human_review = False
         if not any("campuran" in item.casefold() or "sebagian" in item.casefold() for item in decision.why):
             decision.why.append(
-                "Evidence menunjukkan sebagian facet klaim benar, tetapi facet material lain terbantahkan."
+                "Bukti menunjukkan sebagian facet klaim benar, tetapi facet material lain terbantahkan."
             )
         if decision.headline.startswith("Pemeriksaan belum"):
             decision.headline = "Klaim menyesatkan karena mencampur fakta benar dengan detail yang salah"
+
+
+def _enforce_final_decision_consistency(
+    decision: VerificationDecision,
+    planner: PlannerOutput,
+    evidence: list[Evidence],
+    sufficiency_threshold: float,
+) -> None:
+    """Keep the final public decision consistent after model and local guardrails."""
+    if planner.classification == "SCAM_MESSAGE" and decision.risk_level in {"HIGH", "CRITICAL"}:
+        _sanitize_claim_evidence_ids(decision, evidence)
+        return
+
+    if decision.evidence_sufficiency < sufficiency_threshold:
+        decision.overall_verdict = "UNVERIFIED"
+        decision.requires_human_review = True
+        for claim in decision.claims:
+            claim.verdict = "UNVERIFIED"
+            claim.supporting_evidence = []
+            claim.refuting_evidence = []
+            claim.contradiction_level = "NONE"
+            claim.reason = "Bukti yang tersedia belum cukup untuk memberi keputusan faktual yang aman."
+        decision.headline = "Bukti belum cukup untuk memastikan klaim"
+        decision.why = [
+            "Bukti yang ditemukan belum cukup kuat atau belum mencakup seluruh klaim material.",
+            "Sistem tidak membuat vonis benar atau salah ketika coverage bukti masih rendah.",
+        ]
+        decision.uncertainty = (
+            "Masih diperlukan bukti tambahan dari sumber primer atau sumber tepercaya lain sebelum klaim ini dapat disimpulkan."
+        )
+        _ensure_return_unverified_action(decision)
+    else:
+        decisive_claims = [claim for claim in decision.claims if claim.verdict != "UNVERIFIED"]
+        if not decisive_claims and decision.overall_verdict not in {"OPINION", "SATIRE"}:
+            decision.overall_verdict = "UNVERIFIED"
+            decision.requires_human_review = True
+            decision.headline = "Bukti belum cukup untuk memastikan klaim"
+        else:
+            decision.requires_human_review = decision.requires_human_review or _has_unresolved_material_claim(decision)
+            decision.headline = _canonical_headline(decision.overall_verdict, decision.headline)
+    _sanitize_claim_evidence_ids(decision, evidence)
+
+
+def _sanitize_claim_evidence_ids(decision: VerificationDecision, evidence: list[Evidence]) -> None:
+    valid_ids = {item.id for item in evidence}
+    for claim in decision.claims:
+        claim.supporting_evidence = [item for item in claim.supporting_evidence if item in valid_ids]
+        claim.refuting_evidence = [item for item in claim.refuting_evidence if item in valid_ids]
+
+
+def _has_unresolved_material_claim(decision: VerificationDecision) -> bool:
+    decisive = [claim for claim in decision.claims if claim.verdict != "UNVERIFIED"]
+    unresolved = [claim for claim in decision.claims if claim.verdict == "UNVERIFIED"]
+    return bool(decisive and unresolved)
+
+
+def _ensure_return_unverified_action(decision: VerificationDecision) -> None:
+    if any(action.code == "RETURN_UNVERIFIED" for action in decision.recommended_actions):
+        return
+    decision.recommended_actions.insert(
+        0,
+        RecommendedAction(
+            code="RETURN_UNVERIFIED",
+            title="Tunggu bukti yang memadai",
+            detail="Jangan menjadikan informasi ini dasar keputusan sampai ada konfirmasi dari sumber yang lebih kuat.",
+        ),
+    )
+
+
+def _canonical_headline(verdict: str, current: str) -> str:
+    lowered = current.casefold()
+    if verdict == "SUPPORTED" and any(term in lowered for term in ["salah", "keliru", "terbantah", "menyesatkan"]):
+        return "Klaim didukung oleh bukti yang tersedia"
+    if verdict == "REFUTED" and any(term in lowered for term in ["didukung", "terkonfirmasi", "benar"]):
+        return "Klaim bertentangan dengan bukti yang tersedia"
+    if verdict == "MISLEADING" and any(term in lowered for term in ["didukung", "terkonfirmasi"]):
+        return "Klaim menyesatkan karena konteks penting tidak lengkap"
+    if verdict == "UNVERIFIED":
+        return "Bukti belum cukup untuk memastikan klaim"
+    return current
 
 
 def _fallback_verification_decision(
@@ -1659,7 +1784,7 @@ def _fallback_verification_decision(
         return VerificationDecision(
             claims=assessments,
             overall_verdict=overall,
-            risk_level="MEDIUM" if overall in {"REFUTED", "MISLEADING"} else planner.interim_risk,
+            risk_level=planner.interim_risk,
             evidence_sufficiency=evidence_sufficiency,
             requires_human_review=False,
             headline=_fallback_headline(overall),

@@ -3,7 +3,9 @@
 import {
   ArrowUp,
   CircleNotch,
+  ListBullets,
   Paperclip,
+  TextAlignLeft,
   WarningCircle,
   X,
 } from "@phosphor-icons/react/dist/ssr";
@@ -12,6 +14,7 @@ import { ChangeEvent, DragEvent, FormEvent, useEffect, useRef, useState } from "
 import { VerificationResult } from "@/components/verification-result";
 import {
   VerificationApiError,
+  type OutputMode,
   type VerificationResponse,
   verifyImage,
   verifyText,
@@ -42,6 +45,8 @@ interface QuickExample {
   text: string;
 }
 
+type DisplayMode = "STRUCTURED" | "NARRATIVE";
+
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MIN_IMAGE_WIDTH = 64;
 const MIN_IMAGE_HEIGHT = 64;
@@ -51,6 +56,7 @@ const MAX_IMAGE_PIXELS = 30_000_000;
 const MAX_TEXT_LENGTH = 25_000;
 const MAX_IMAGE_QUESTION_LENGTH = 500;
 const REQUEST_TIMEOUT_MS = 105_000;
+const OUTPUT_MODE_STORAGE_KEY = "waspadai.outputMode";
 const ACCEPTED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const checkingMessages = [
   {
@@ -193,6 +199,11 @@ export function ChatWorkspace() {
   const [checkingStep, setCheckingStep] = useState(0);
   const [isDraggingImage, setIsDraggingImage] = useState(false);
   const [result, setResult] = useState<VerificationResponse | null>(null);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => {
+    if (typeof window === "undefined") return "STRUCTURED";
+    const stored = window.localStorage.getItem(OUTPUT_MODE_STORAGE_KEY);
+    return stored === "NARRATIVE" ? "NARRATIVE" : "STRUCTURED";
+  });
   const [requestError, setRequestError] = useState<RequestError | null>(null);
   const [retryRemaining, setRetryRemaining] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -389,8 +400,9 @@ export function ChatWorkspace() {
             await resolveImageFile(attachedImage, controller.signal),
             input.trim(),
             controller.signal,
+            requestedOutputMode,
           )
-        : await verifyText(input.trim(), controller.signal);
+        : await verifyText(input.trim(), controller.signal, requestedOutputMode);
       setResult(response);
     } catch (error) {
       const readable = readableError(error);
@@ -440,6 +452,11 @@ export function ChatWorkspace() {
     setRequestError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     scrollToComposer();
+  };
+
+  const changeDisplayMode = (mode: DisplayMode) => {
+    setDisplayMode(mode);
+    window.localStorage.setItem(OUTPUT_MODE_STORAGE_KEY, mode);
   };
 
   return (
@@ -557,7 +574,29 @@ export function ChatWorkspace() {
         )}
 
         <div ref={resultRef} className="verification-result-anchor">
-          {result && <VerificationResult result={result} />}
+          {result && (
+            <>
+              <div className="result-view-switch" aria-label="Mode tampilan hasil">
+                <button
+                  type="button"
+                  aria-pressed={displayMode === "STRUCTURED"}
+                  onClick={() => changeDisplayMode("STRUCTURED")}
+                >
+                  <ListBullets size={17} />
+                  Poin-poin
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={displayMode === "NARRATIVE"}
+                  onClick={() => changeDisplayMode("NARRATIVE")}
+                >
+                  <TextAlignLeft size={17} />
+                  Naratif
+                </button>
+              </div>
+              <VerificationResult result={result} displayMode={displayMode} />
+            </>
+          )}
         </div>
       </div>
 
@@ -594,3 +633,4 @@ export function ChatWorkspace() {
     </section>
   );
 }
+    const requestedOutputMode: OutputMode = "BOTH";

@@ -2717,23 +2717,83 @@ diperiksa. Endpoint server-to-server berada di `/api/internal/v1/*` dan wajib
 mengirim `X-Waspadai-API-Key`; dokumentasi konsumsi API dan contoh response
 production-oriented berada di `docs/api.md`.
 
-## 72. Chrome Extension Gateway - IMPLEMENTED
+## 72. Anonymous Installation Gateway - REMOVED
 
-Sejak 2026-09-14, backend menyediakan gateway khusus Chrome extension pada
-`/api/extension/v1/*`. Gateway ini tidak menggunakan internal API key di browser;
-extension melakukan anonymous installation registration untuk memperoleh Bearer
-token opaque yang dibuat server. Token disimpan sebagai hash pada metadata store
-backend, dapat dirotasi, dan hanya berlaku untuk endpoint extension.
+Pada 2026-09-14, rancangan anonymous installation untuk Chrome extension
+dibatalkan karena aplikasi production mempunyai akun melalui Supabase dan
+backend FastAPI sendiri. Seluruh endpoint `/api/extension/v1/*`, token instalasi,
+refresh token, rate limit per instalasi, CORS extension, persistent token store,
+serta volume `extension-data` dihapus dari runtime dan kontrak OpenAPI.
 
-Endpoint extension tetap memakai response sukses `VerificationResponse` yang sama
-dengan endpoint internal, tanpa wrapper tambahan. Error publik menggunakan envelope
-`{"error": {"code", "message", "retry_after_seconds", "request_id"}}` agar extension
-dapat menangani validasi, rate limit, token invalid/expired/blocked, payload besar,
-media tidak didukung, dan upstream failure secara konsisten.
+Website demo tetap menggunakan `/api/v1/*` secara anonim. Integrasi aplikasi
+production menggunakan `/api/internal/v1/*` secara server-to-server; service key
+hanya berada pada backend aplikasi dan WaspadAI, tidak pada APK Android.
 
-Selected-text verification mendukung `page_context` terstruktur yang opsional
-berisi `title`, `before`, dan `after`. Field ini disanitasi dan digunakan sebagai
-konteks pendukung, sedangkan `text` tetap menjadi klaim utama yang diperiksa.
-Gateway menerapkan rate limit per IP, rate limit per installation, limit khusus
-registration, concurrent-request limit, dan storage token persisten melalui Docker
-volume `extension-data`.
+## 73. Dual Output Presentation Mode - IMPLEMENTED
+
+Sejak 2026-09-14, response verifikasi mendukung `output_mode`: `STRUCTURED`,
+`NARRATIVE`, dan `BOTH`. `STRUCTURED` mempertahankan tampilan poin-poin seperti
+sebelumnya, sedangkan `NARRATIVE` menambahkan `presentation.narrative` berupa
+penjelasan natural yang lebih mirip jawaban chatbot.
+
+Mode naratif tidak menjalankan panggilan Groq tambahan. Backend memakai hasil
+kanonik yang sudah dibuat verifier, lalu presenter lokal menyusun paragraf dari
+`headline`, `verdict`, `risk_level`, `why`, `evidence`, `uncertainty`, dan
+`recommended_actions`. Karena itu, naratif tidak boleh mengubah verdict, risiko,
+bukti, sumber, maupun status `requires_human_review`; ia hanya mengubah cara
+penyajian.
+
+Presenter naratif menggunakan kebijakan risk disclosure bertingkat. Risiko `LOW`
+dan `MEDIUM` tidak otomatis disebutkan di paragraf publik, sedangkan `HIGH` dan
+`CRITICAL` harus menghasilkan peringatan eksplisit dan safe action. Risiko sedang
+tetap tersedia di JSON untuk integrasi, tetapi hanya perlu diangkat ke narasi jika
+ada konsekuensi praktis yang jelas bagi pengguna. Label teknis seperti "skor kecukupan, bukan probabilitas
+kebenaran" tidak ditampilkan ke pengguna; naratif memakai bahasa publik seperti
+"bukti kuat", "bukti cukup", atau "bukti belum cukup untuk memastikan klaim".
+
+Untuk verdict `UNVERIFIED`, naratif harus menjaga bahasa non-final. Sistem boleh
+menjelaskan bahwa bukti belum cukup, tetapi tidak boleh menulis seolah klaim
+sudah terbantahkan hanya karena tidak ada bukti pendukung yang kuat.
+
+Sebelum response dibangun, backend menjalankan final decision consistency gate.
+Gate ini memisahkan empat sumbu keputusan: factual verdict, evidence sufficiency,
+harm risk, dan kebutuhan human review. Untuk kasus faktual non-scam, sufficiency
+di bawah threshold mengunci verdict ke `UNVERIFIED`, membersihkan evidence ID yang
+tidak valid, menulis ulang headline agar tidak final, dan menambahkan tindakan
+aman untuk menunggu bukti yang lebih kuat. Normalisasi `MISLEADING` hanya boleh
+terjadi ketika ada claim assessment final yang cukup kuat pada sisi didukung dan
+dibantah; mixed raw evidence saja tidak cukup untuk mengubah verdict.
+
+Naratif juga membedakan kualitas sumber. Sumber resmi/primer, sumber cek fakta,
+sumber pendukung, dan konteks media sosial dikelompokkan agar unggahan sosial
+tidak terdengar setara dengan rilis resmi atau sumber primer.
+
+Frontend publik meminta `output_mode=BOTH` agar pengguna bisa berpindah antara
+mode poin-poin dan naratif melalui toggle tanpa melakukan request ulang. Endpoint
+publik dan internal tetap mendukung default `STRUCTURED` untuk menjaga
+kompatibilitas integrasi lama.
+
+## 74. Authenticated Android Integration Contract - DOCUMENTED
+
+Aplikasi Android production tidak memanggil WaspadAI secara langsung. Android
+mengirim Supabase access token ke FastAPI aplikasi eksternal; backend tersebut
+memvalidasi token, mengambil `sub` sebagai `user_id`, lalu memanggil WaspadAI
+melalui private network menggunakan `X-Waspadai-API-Key`. Pemeriksaan tetap
+synchronous dengan timeout client 120 detik dan satu pesan untuk satu pemeriksaan.
+
+FastAPI aplikasi memiliki Supabase Database/Storage, history, consent komunitas,
+vote, dan moderasi. Hanya hasil `UNVERIFIED` atau `requires_human_review=true`
+yang disimpan. Screenshot asli disimpan privat; komunitas hanya menerima versi
+hasil preview/crop yang telah melalui redaksi PII dan konfirmasi kedua pengguna.
+
+Kasus komunitas anonim dan hanya mempunyai vote `DIDUKUNG` atau `DIBANTAH`.
+Vote adalah sinyal, bukan verdict atau evidence terverifikasi. Hanya
+moderator/admin yang dapat menetapkan `VERIFIED_EVIDENCE`; pemilik dapat menarik
+atau menghapus kasus sebelum status tersebut. Kontrak target lengkap untuk tim
+Kotlin terdapat di `docs/android-api-contract.md`; endpoint itu harus
+diimplementasikan pada repository FastAPI aplikasi eksternal.
+
+`community_status` dari WaspadAI bernilai `ELIGIBLE_WITH_CONSENT` apabila verdict
+`UNVERIFIED` atau membutuhkan human review. WaspadAI tetap stateless dan privacy
+notice menegaskan bahwa kebijakan penyimpanan history berada pada aplikasi
+pemanggil.

@@ -3,6 +3,7 @@ import type { components } from "@/lib/api-schema";
 export type VerificationResponse = components["schemas"]["VerificationResponse"];
 export type Evidence = components["schemas"]["Evidence"];
 export type AssessmentDimensions = components["schemas"]["AssessmentDimensions"];
+export type OutputMode = "STRUCTURED" | "NARRATIVE" | "BOTH";
 
 interface ApiErrorPayload {
   detail?: string | Array<{ msg?: string }>;
@@ -56,7 +57,11 @@ async function readResponse(response: Response): Promise<VerificationResponse> {
   return payload as VerificationResponse;
 }
 
-export async function verifyText(text: string, signal: AbortSignal): Promise<VerificationResponse> {
+export async function verifyText(
+  text: string,
+  signal: AbortSignal,
+  outputMode: OutputMode = "BOTH",
+): Promise<VerificationResponse> {
   const response = await fetch("/api/v1/verify/text", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -64,6 +69,7 @@ export async function verifyText(text: string, signal: AbortSignal): Promise<Ver
       text,
       question: "Apakah isi teks ini benar dan aman ditindaklanjuti?",
       sender_context: "UNKNOWN",
+      output_mode: outputMode,
     }),
     cache: "no-store",
     signal,
@@ -75,6 +81,7 @@ export async function verifyImage(
   image: File,
   question: string,
   signal: AbortSignal,
+  outputMode: OutputMode = "BOTH",
 ): Promise<VerificationResponse> {
   const formData = new FormData();
   formData.append("image", image, image.name);
@@ -82,6 +89,7 @@ export async function verifyImage(
     "question",
     question || "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?",
   );
+  formData.append("output_mode", outputMode);
 
   const response = await fetch("/api/v1/verify/image", {
     method: "POST",

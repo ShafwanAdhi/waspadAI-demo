@@ -15,8 +15,6 @@ services:
       DEBUG_TRACE_ENABLED: "false"
     expose:
       - "8001"
-    volumes:
-      - extension-data:/app/runtime
     logging: *default-logging
     restart: unless-stopped
     healthcheck:
@@ -53,6 +51,3 @@ services:
       - web
       - api
     restart: unless-stopped
-
-volumes:
-  extension-data:

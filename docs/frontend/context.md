@@ -496,6 +496,15 @@ detail.
 
 Additional evidence can be expandable so the interface remains readable.
 
+The result can be shown in two modes:
+
+-   **Poin-poin** for quick scanning, comparison, and source checking.
+-   **Naratif** for users who prefer a short natural-language explanation.
+
+Both modes must represent the same verification result. Switching mode
+should not run a new check, change the verdict, or hide important safety
+warnings and evidence.
+
 ------------------------------------------------------------------------
 
 ## 18. About Page

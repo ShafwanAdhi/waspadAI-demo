@@ -47,6 +47,18 @@ dari browser.
 | `POST` | `/api/internal/v1/verify/text` | Ya | Verifikasi teks, berita, pesan, atau tautan |
 | `POST` | `/api/internal/v1/verify/image` | Ya | Verifikasi gambar/screenshot pesan atau klaim |
 
+## Batas input
+
+| Input | Aturan |
+| --- | --- |
+| Panjang teks | Minimal 10 karakter, maksimal 25.000 karakter |
+| Ukuran gambar | Maksimal 8 MB |
+| Dimensi gambar | Minimal 64x64 piksel, maksimal 6000x6000 piksel, dan maksimal 30.000.000 piksel total |
+| Format gambar | `JPEG`, `PNG`, atau `WEBP` |
+| Pertanyaan teks | Opsional, maksimal 500 karakter |
+| Pertanyaan gambar | Opsional, maksimal 500 karakter |
+| Teks hanya URL | URL publik diterima sebagai `URL_ONLY`; query string/fragment dibuang; URL privat seperti localhost/IP internal ditolak |
+
 ## Verifikasi teks
 
 ```bash
@@ -144,3 +156,145 @@ const result = await response.json();
 Jika API key tidak dikirim atau salah, endpoint internal mengembalikan `401`.
 Jika `WASPADAI_API_KEYS` belum dikonfigurasi, endpoint internal mengembalikan
 `503`.
+
+## Contoh JSON response produksi
+
+Contoh berikut dipadatkan untuk dokumentasi integrasi. Field penting yang perlu
+dibaca client tetap sama dengan response production.
+
+Klaim didukung:
+
+```json
+{
+  "request_id": "req_supported_001",
+  "status": "COMPLETED",
+  "mode": "LIVE",
+  "verdict": "SUPPORTED",
+  "risk_level": "LOW",
+  "headline": "Klaim utama didukung oleh sumber resmi.",
+  "what_checked": ["Pembukaan Olimpiade Paris 2024 digelar dengan parade di Sungai Seine."],
+  "why": ["Sumber resmi penyelenggara menjelaskan format parade di Sungai Seine."],
+  "evidence_sufficiency": 0.86,
+  "evidence_sufficiency_label": "Bukti cukup",
+  "evidence": [
+    {
+      "publisher": "Olympics",
+      "title": "Paris 2024 opening ceremony information",
+      "url": "https://olympics.com/example",
+      "stance": "SUPPORTS",
+      "verification_status": "VERIFIED"
+    }
+  ],
+  "sources": [{"publisher": "Olympics", "title": "Paris 2024 opening ceremony information", "url": "https://olympics.com/example"}],
+  "recommended_actions": [{"title": "Bagikan dengan konteks", "detail": "Sertakan sumber resmi saat meneruskan informasi."}],
+  "requires_human_review": false
+}
+```
+
+Klaim ditolak:
+
+```json
+{
+  "request_id": "req_refuted_001",
+  "status": "COMPLETED",
+  "mode": "LIVE",
+  "verdict": "REFUTED",
+  "risk_level": "MEDIUM",
+  "headline": "Klaim utama bertentangan dengan sumber yang lebih kuat.",
+  "what_checked": ["Indonesia menjadi tuan rumah FIFA ASEAN Cup 2026."],
+  "why": ["Tidak ditemukan turnamen resmi dengan nama tersebut pada sumber otoritatif."],
+  "evidence_sufficiency": 0.78,
+  "evidence_sufficiency_label": "Bukti cukup",
+  "evidence": [
+    {
+      "publisher": "FIFA",
+      "title": "ASEAN Cup information",
+      "url": "https://www.fifa.com/example",
+      "stance": "REFUTES",
+      "verification_status": "VERIFIED"
+    }
+  ],
+  "sources": [{"publisher": "FIFA", "title": "ASEAN Cup information", "url": "https://www.fifa.com/example"}],
+  "recommended_actions": [{"title": "Jangan teruskan klaim", "detail": "Tunggu konfirmasi dari sumber resmi sebelum membagikan."}],
+  "requires_human_review": false
+}
+```
+
+UNVERIFIED:
+
+```json
+{
+  "request_id": "req_unverified_001",
+  "status": "COMPLETED",
+  "mode": "LIVE",
+  "verdict": "UNVERIFIED",
+  "risk_level": "UNKNOWN",
+  "headline": "Bukti belum cukup untuk memastikan klaim.",
+  "what_checked": ["Klaim viral tentang program baru yang belum menyebut sumber resmi."],
+  "why": ["Sumber pembanding yang ditemukan belum cukup kuat atau belum langsung menjawab klaim."],
+  "evidence_sufficiency": 0.34,
+  "evidence_sufficiency_label": "Bukti belum cukup",
+  "evidence": [],
+  "sources": [],
+  "recommended_actions": [{"title": "Tahan dulu", "detail": "Jangan jadikan informasi ini dasar keputusan penting."}],
+  "requires_human_review": true
+}
+```
+
+Risiko CRITICAL:
+
+```json
+{
+  "request_id": "req_critical_001",
+  "status": "COMPLETED",
+  "mode": "LIVE",
+  "verdict": "MISLEADING",
+  "risk_level": "CRITICAL",
+  "headline": "Pesan berisiko tinggi dan meminta tindakan sensitif.",
+  "what_checked": ["Pesan mengaku dari bank dan meminta OTP agar akun tidak diblokir."],
+  "why": ["Permintaan OTP dari pesan pribadi adalah indikator kuat upaya pengambilalihan akun."],
+  "evidence_sufficiency": 0.72,
+  "evidence_sufficiency_label": "Bukti risiko cukup",
+  "evidence": [
+    {
+      "publisher": "OJK",
+      "title": "Peringatan penipuan permintaan OTP",
+      "url": "https://ojk.go.id/example",
+      "stance": "CONTEXT",
+      "verification_status": "VERIFIED"
+    }
+  ],
+  "sources": [{"publisher": "OJK", "title": "Peringatan penipuan permintaan OTP", "url": "https://ojk.go.id/example"}],
+  "recommended_actions": [{"title": "Jangan kirim OTP", "detail": "Putus komunikasi dan hubungi kanal resmi lembaga terkait."}],
+  "requires_human_review": false
+}
+```
+
+requires_human_review true:
+
+```json
+{
+  "request_id": "req_review_001",
+  "status": "COMPLETED",
+  "mode": "LIVE",
+  "verdict": "UNVERIFIED",
+  "risk_level": "MEDIUM",
+  "headline": "Kasus perlu pemeriksaan manual.",
+  "what_checked": ["Klaim lokal baru yang belum memiliki sumber pembanding memadai."],
+  "why": ["Bukti yang tersedia belum cukup langsung dan ada konteks lokal yang perlu dikonfirmasi."],
+  "evidence_sufficiency": 0.41,
+  "evidence_sufficiency_label": "Perlu review manual",
+  "evidence": [],
+  "sources": [],
+  "recommended_actions": [{"title": "Verifikasi ke pihak terkait", "detail": "Cari kanal resmi atau narasumber primer sebelum mengambil tindakan."}],
+  "requires_human_review": true
+}
+```
+
+Respons error:
+
+```json
+{
+  "detail": "Header X-Waspadai-API-Key wajib diisi."
+}
+```

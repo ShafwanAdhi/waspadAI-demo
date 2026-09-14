@@ -29,6 +29,7 @@ TextContentType = Literal[
     "OPINION",
     "SATIRE",
     "QUESTION",
+    "URL_ONLY",
     "UNKNOWN",
 ]
 SenderContext = Literal[

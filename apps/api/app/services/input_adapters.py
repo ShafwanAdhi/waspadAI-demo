@@ -32,6 +32,10 @@ def build_text_case(
         raise InvalidTextInputError("Teks minimal 10 karakter setelah dinormalisasi.")
 
     sanitized_text, embedded_urls = sanitize_urls_in_text(normalized, max_urls=max_urls)
+    if _is_url_only_text(normalized):
+        if not embedded_urls:
+            raise InvalidTextInputError("Teks hanya berisi URL yang tidak aman atau tidak valid.")
+        sanitized_text = "URL untuk diperiksa: " + ", ".join(embedded_urls[:max_urls])
     safe_text, text_pii = redact_pii(sanitized_text)
     safe_question, question_pii = _safe_free_text(question, limit=500)
     safe_source_url = sanitize_source_url(source_url)
@@ -158,6 +162,8 @@ def sanitize_urls_in_text(value: str, max_urls: int) -> tuple[str, list[str]]:
 
 def infer_text_content_type(text: str, sender_context: SenderContext) -> TextContentType:
     lowered = text.casefold()
+    if lowered.startswith("url untuk diperiksa:"):
+        return "URL_ONLY"
     if sender_context == "UNKNOWN_NUMBER":
         return "UNKNOWN_SENDER_MESSAGE"
     if sender_context == "FORWARDED" or re.search(r"\bditeruskan berkali-kali\b", lowered):
@@ -191,6 +197,15 @@ def _safe_free_text(value: str, limit: int) -> tuple[str, list[str]]:
     normalized = normalize_text((value or "")[:limit])
     sanitized, _ = sanitize_urls_in_text(normalized, max_urls=10)
     return redact_pii(sanitized)
+
+
+def _is_url_only_text(value: str) -> bool:
+    compact = normalize_text(value)
+    if not compact:
+        return False
+    without_urls = URL_PATTERN.sub("", compact)
+    without_punctuation = without_urls.strip(" \t\r\n.,;:!?()[]{}<>\"'")
+    return not without_punctuation
 
 
 def _text_summary(text: str) -> str:

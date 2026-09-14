@@ -19,7 +19,7 @@ class InvalidImageError(ValueError):
     pass
 
 
-def inspect_image(payload: bytes) -> tuple[Image.Image, MediaMetadata]:
+def inspect_image(payload: bytes, settings: Settings) -> tuple[Image.Image, MediaMetadata]:
     try:
         image = Image.open(io.BytesIO(payload))
         image.load()
@@ -29,6 +29,21 @@ def inspect_image(payload: bytes) -> tuple[Image.Image, MediaMetadata]:
     image_format = (image.format or "").upper()
     if image_format not in ALLOWED_FORMATS:
         raise InvalidImageError("Format gambar harus JPG, PNG, atau WEBP.")
+
+    if image.width < settings.min_image_width or image.height < settings.min_image_height:
+        raise InvalidImageError(
+            f"Dimensi gambar minimal {settings.min_image_width}x{settings.min_image_height} piksel."
+        )
+
+    if image.width > settings.max_image_width or image.height > settings.max_image_height:
+        raise InvalidImageError(
+            f"Dimensi gambar maksimal {settings.max_image_width}x{settings.max_image_height} piksel."
+        )
+
+    if image.width * image.height > settings.max_image_pixels:
+        raise InvalidImageError(
+            f"Jumlah piksel gambar maksimal {settings.max_image_pixels:,} piksel."
+        )
 
     exif = image.getexif()
     exif_values = {ExifTags.TAGS.get(key, str(key)): value for key, value in exif.items()} if exif else {}
@@ -145,4 +160,3 @@ def run_local_ocr(image: Image.Image, settings: Settings) -> OCRResult:
 
 def current_iso_date() -> str:
     return datetime.now().astimezone().date().isoformat()
-

@@ -29,7 +29,7 @@ async def verify_image(pipeline: FactCheckPipeline):
     for index, line in enumerate(lines):
         draw.text((55, 100 + index * 90), line, fill="black", font=font)
     diagnostic_image.save(buffer, "PNG")
-    image, metadata = inspect_image(buffer.getvalue())
+    image, metadata = inspect_image(buffer.getvalue(), pipeline.settings)
     return await pipeline.verify_image(
         image,
         metadata,

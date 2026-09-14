@@ -6,9 +6,9 @@ from app.config import get_settings
 from app.main import app
 
 
-def png_payload() -> bytes:
+def png_payload(width: int = 640, height: int = 480) -> bytes:
     buffer = io.BytesIO()
-    Image.new("RGB", (640, 480), color=(238, 232, 219)).save(buffer, format="PNG")
+    Image.new("RGB", (width, height), color=(238, 232, 219)).save(buffer, format="PNG")
     return buffer.getvalue()
 
 
@@ -69,6 +69,27 @@ def test_rejects_non_image_payload() -> None:
     assert response.status_code == 415
 
 
+def test_rejects_image_dimensions_outside_allowed_range(monkeypatch) -> None:
+    monkeypatch.setenv("MAX_IMAGE_WIDTH", "1000")
+    monkeypatch.setenv("MAX_IMAGE_HEIGHT", "1000")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        too_small = client.post(
+            "/api/v1/verify/image",
+            files={"image": ("tiny.png", png_payload(32, 32), "image/png")},
+        )
+        too_large = client.post(
+            "/api/v1/verify/image",
+            files={"image": ("large.png", png_payload(1200, 800), "image/png")},
+        )
+
+    assert too_small.status_code == 415
+    assert "minimal" in too_small.json()["detail"]
+    assert too_large.status_code == 415
+    assert "maksimal" in too_large.json()["detail"]
+
+
 def test_live_text_verification_has_image_feature_parity() -> None:
     with TestClient(app) as client:
         image_response = client.post(
@@ -102,6 +123,31 @@ def test_live_text_verification_has_image_feature_parity() -> None:
     assert text_body["sources"]
     assert len(text_body["pipeline"]) == 5
     assert text_body["rulebook"]["selected_count"] > 0
+
+
+def test_url_only_text_is_accepted_as_url_context() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/text",
+            json={"text": "https://example.com/klaim?utm_source=test#bagian"},
+        )
+
+    assert response.status_code == 200
+    summary = response.json()["input_summary"]
+    assert summary["content_type"] == "URL_ONLY"
+    assert summary["excerpt"].startswith("URL untuk diperiksa: https://example.com/klaim")
+    assert summary["urls_detected"] == 1
+
+
+def test_private_url_only_text_is_rejected() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/text",
+            json={"text": "http://127.0.0.1/private"},
+        )
+
+    assert response.status_code == 422
+    assert "URL" in response.json()["detail"]
 
 
 def test_internal_text_verification_requires_configured_api_key(

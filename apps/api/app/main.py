@@ -186,13 +186,16 @@ async def _verify_image(
         raise HTTPException(status_code=400, detail="Pilih gambar terlebih dahulu.")
     if len(payload) > max_bytes:
         raise HTTPException(status_code=413, detail=f"Ukuran gambar maksimal {settings.max_upload_mb} MB.")
-    if len(question.strip()) > 500:
-        raise HTTPException(status_code=422, detail="Pertanyaan maksimal 500 karakter.")
+    if len(question.strip()) > settings.max_image_question_chars:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Pertanyaan maksimal {settings.max_image_question_chars} karakter.",
+        )
     if not settings.groq_api_key.strip():
         raise HTTPException(status_code=503, detail="GROQ_API_KEY belum diisi pada file .env.")
 
     try:
-        pil_image, metadata = inspect_image(payload)
+        pil_image, metadata = inspect_image(payload, settings)
         return await request.app.state.pipeline.verify_image(
             image=pil_image,
             metadata=metadata,

@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     tesseract_cmd: str = ""
     tesseract_lang: str = "ind+eng"
     max_upload_mb: int = 8
+    min_image_width: int = Field(default=64, ge=1, le=4096)
+    min_image_height: int = Field(default=64, ge=1, le=4096)
+    max_image_width: int = Field(default=6000, ge=512, le=12000)
+    max_image_height: int = Field(default=6000, ge=512, le=12000)
+    max_image_pixels: int = Field(default=30_000_000, ge=262_144, le=80_000_000)
+    max_image_question_chars: int = Field(default=500, ge=1, le=2000)
     min_text_chars: int = Field(default=10, ge=1, le=1000)
     max_text_chars: int = Field(default=25_000, ge=1000, le=100_000)
     max_case_urls: int = Field(default=10, ge=1, le=50)

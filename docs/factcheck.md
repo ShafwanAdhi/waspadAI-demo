@@ -2701,3 +2701,18 @@ serta uncertainty dan dimensi yang relevan. Rulebook match, pipeline/model trace
 dan rate-limit diagnostics tetap berada di debug UI non-production agar keluaran
 teknis tidak disalahartikan sebagai bukti oleh pengguna. Kontrak integrasi lengkap
 terdapat di `docs/integration.md` dan deployment VPS di `docs/deployment.md`.
+
+## 71. Public/Internal API Input Contract - IMPLEMENTED
+
+Sejak 2026-09-14, batas input API dibuat eksplisit untuk frontend publik dan
+endpoint server-to-server. Teks diterima pada rentang 10 sampai 25.000 karakter;
+pertanyaan maksimal 500 karakter; gambar maksimal 8 MB dengan format JPEG, PNG,
+atau WEBP. Dimensi gambar wajib berada pada rentang 64x64 sampai 6000x6000 piksel
+dan total piksel tidak boleh melebihi 30.000.000.
+
+Teks yang hanya berisi URL publik tetap diterima sebagai konteks `URL_ONLY`.
+URL disanitasi sebelum pipeline: query string dan fragment dibuang, URL privat
+atau tidak valid ditolak, dan URL yang aman diperlakukan sebagai objek yang perlu
+diperiksa. Endpoint server-to-server berada di `/api/internal/v1/*` dan wajib
+mengirim `X-Waspadai-API-Key`; dokumentasi konsumsi API dan contoh response
+production-oriented berada di `docs/api.md`.

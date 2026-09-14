@@ -43,6 +43,11 @@ interface QuickExample {
 }
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MIN_IMAGE_WIDTH = 64;
+const MIN_IMAGE_HEIGHT = 64;
+const MAX_IMAGE_WIDTH = 6000;
+const MAX_IMAGE_HEIGHT = 6000;
+const MAX_IMAGE_PIXELS = 30_000_000;
 const MAX_TEXT_LENGTH = 25_000;
 const MAX_IMAGE_QUESTION_LENGTH = 500;
 const REQUEST_TIMEOUT_MS = 105_000;
@@ -165,6 +170,22 @@ function readableError(error: unknown): RequestError {
   };
 }
 
+function imageDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new window.Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Gambar tidak dapat dibaca."));
+    };
+    image.src = url;
+  });
+}
+
 export function ChatWorkspace() {
   const [input, setInput] = useState("");
   const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(null);
@@ -227,7 +248,7 @@ export function ChatWorkspace() {
     };
   }, [result]);
 
-  const attachImageFile = (file: File) => {
+  const attachImageFile = async (file: File) => {
     if (!ACCEPTED_IMAGE_TYPES.has(file.type)) {
       setRequestError({
         message: "Gunakan gambar PNG, JPG, JPEG, atau WebP.",
@@ -237,6 +258,37 @@ export function ChatWorkspace() {
     }
     if (file.size > MAX_IMAGE_BYTES) {
       setRequestError({ message: "Ukuran gambar maksimal 8 MB.", retryAfterSeconds: null });
+      return false;
+    }
+
+    try {
+      const dimensions = await imageDimensions(file);
+      if (dimensions.width < MIN_IMAGE_WIDTH || dimensions.height < MIN_IMAGE_HEIGHT) {
+        setRequestError({
+          message: `Dimensi gambar minimal ${MIN_IMAGE_WIDTH}x${MIN_IMAGE_HEIGHT} piksel.`,
+          retryAfterSeconds: null,
+        });
+        return false;
+      }
+      if (dimensions.width > MAX_IMAGE_WIDTH || dimensions.height > MAX_IMAGE_HEIGHT) {
+        setRequestError({
+          message: `Dimensi gambar maksimal ${MAX_IMAGE_WIDTH}x${MAX_IMAGE_HEIGHT} piksel.`,
+          retryAfterSeconds: null,
+        });
+        return false;
+      }
+      if (dimensions.width * dimensions.height > MAX_IMAGE_PIXELS) {
+        setRequestError({
+          message: "Jumlah piksel gambar maksimal 30 juta piksel.",
+          retryAfterSeconds: null,
+        });
+        return false;
+      }
+    } catch {
+      setRequestError({
+        message: "Gambar tidak dapat dibaca. Gunakan file PNG, JPG, JPEG, atau WebP.",
+        retryAfterSeconds: null,
+      });
       return false;
     }
 
@@ -256,10 +308,10 @@ export function ChatWorkspace() {
     return true;
   };
 
-  const handleFile = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const attached = attachImageFile(file);
+    const attached = await attachImageFile(file);
     if (!attached) event.target.value = "";
   };
 
@@ -288,7 +340,7 @@ export function ChatWorkspace() {
     setIsDraggingImage(false);
   };
 
-  const handleComposerDrop = (event: DragEvent<HTMLFormElement>) => {
+  const handleComposerDrop = async (event: DragEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsDraggingImage(false);
     const file = Array.from(event.dataTransfer.files).find((item) => item.type.startsWith("image/"));
@@ -299,7 +351,7 @@ export function ChatWorkspace() {
       });
       return;
     }
-    const attached = attachImageFile(file);
+    const attached = await attachImageFile(file);
     if (attached && fileInputRef.current) fileInputRef.current.value = "";
   };
 

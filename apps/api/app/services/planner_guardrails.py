@@ -77,6 +77,7 @@ def compact_case_payload(case: CaseContext, max_chars: int) -> dict[str, Any]:
         "text_excerpts": _select_excerpts(case.safe_text, max_chars),
         "summary": case.summary[:800],
         "question": case.question[:400],
+        "page_context": case.page_context.model_dump(mode="json") if case.page_context else None,
         "source_url": case.source_url,
         "sender_context": case.sender_context,
         "platform": case.platform,

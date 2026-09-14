@@ -2716,3 +2716,24 @@ atau tidak valid ditolak, dan URL yang aman diperlakukan sebagai objek yang perl
 diperiksa. Endpoint server-to-server berada di `/api/internal/v1/*` dan wajib
 mengirim `X-Waspadai-API-Key`; dokumentasi konsumsi API dan contoh response
 production-oriented berada di `docs/api.md`.
+
+## 72. Chrome Extension Gateway - IMPLEMENTED
+
+Sejak 2026-09-14, backend menyediakan gateway khusus Chrome extension pada
+`/api/extension/v1/*`. Gateway ini tidak menggunakan internal API key di browser;
+extension melakukan anonymous installation registration untuk memperoleh Bearer
+token opaque yang dibuat server. Token disimpan sebagai hash pada metadata store
+backend, dapat dirotasi, dan hanya berlaku untuk endpoint extension.
+
+Endpoint extension tetap memakai response sukses `VerificationResponse` yang sama
+dengan endpoint internal, tanpa wrapper tambahan. Error publik menggunakan envelope
+`{"error": {"code", "message", "retry_after_seconds", "request_id"}}` agar extension
+dapat menangani validasi, rate limit, token invalid/expired/blocked, payload besar,
+media tidak didukung, dan upstream failure secara konsisten.
+
+Selected-text verification mendukung `page_context` terstruktur yang opsional
+berisi `title`, `before`, dan `after`. Field ini disanitasi dan digunakan sebagai
+konteks pendukung, sedangkan `text` tetap menjadi klaim utama yang diperiksa.
+Gateway menerapkan rate limit per IP, rate limit per installation, limit khusus
+registration, concurrent-request limit, dan storage token persisten melalui Docker
+volume `extension-data`.

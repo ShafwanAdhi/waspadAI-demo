@@ -26,6 +26,222 @@
         }
       }
     },
+    "/api/extension/v1/health": {
+      "get": {
+        "summary": "Extension Health",
+        "operationId": "extension_health_api_extension_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Extension Health Api Extension V1 Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extension/v1/installations": {
+      "post": {
+        "summary": "Create Extension Installation",
+        "operationId": "create_extension_installation_api_extension_v1_installations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtensionInstallationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionInstallationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extension/v1/installations/refresh": {
+      "post": {
+        "summary": "Refresh Extension Installation",
+        "operationId": "refresh_extension_installation_api_extension_v1_installations_refresh_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionInstallationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extension/v1/verify/text": {
+      "post": {
+        "summary": "Verify Extension Text",
+        "operationId": "verify_extension_text_api_extension_v1_verify_text_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextVerificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/extension/v1/verify/image": {
+      "post": {
+        "summary": "Verify Extension Image",
+        "operationId": "verify_extension_image_api_extension_v1_verify_image_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_verify_extension_image_api_extension_v1_verify_image_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/verify/image": {
       "post": {
         "summary": "Verify Image",
@@ -308,6 +524,25 @@
         ],
         "title": "AssessmentDimensions"
       },
+      "Body_verify_extension_image_api_extension_v1_verify_image_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "default": "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_verify_extension_image_api_extension_v1_verify_image_post"
+      },
       "Body_verify_image_api_v1_verify_image_post": {
         "properties": {
           "image": {
@@ -449,6 +684,49 @@
         ],
         "title": "Evidence"
       },
+      "ExtensionInstallationRequest": {
+        "properties": {
+          "extension_version": {
+            "type": "string",
+            "maxLength": 80,
+            "title": "Extension Version",
+            "default": "unknown"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ExtensionInstallationRequest"
+      },
+      "ExtensionInstallationResponse": {
+        "properties": {
+          "installation_id": {
+            "type": "string",
+            "title": "Installation Id"
+          },
+          "installation_token": {
+            "type": "string",
+            "title": "Installation Token"
+          },
+          "token_type": {
+            "type": "string",
+            "const": "Bearer",
+            "title": "Token Type"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "installation_id",
+          "installation_token",
+          "token_type",
+          "expires_at"
+        ],
+        "title": "ExtensionInstallationResponse"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -566,6 +844,49 @@
           "pii_types_redacted"
         ],
         "title": "InputSummary"
+      },
+      "PageContext": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PageContext"
       },
       "PipelineStage": {
         "properties": {
@@ -754,6 +1075,16 @@
             ],
             "title": "Sender Context",
             "default": "UNKNOWN"
+          },
+          "page_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

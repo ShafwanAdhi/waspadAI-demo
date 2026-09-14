@@ -1,4 +1,7 @@
 import io
+import json
+from datetime import datetime, timedelta, timezone
+
 from fastapi.testclient import TestClient
 from PIL import Image
 
@@ -10,6 +13,26 @@ def png_payload(width: int = 640, height: int = 480) -> bytes:
     buffer = io.BytesIO()
     Image.new("RGB", (width, height), color=(238, 232, 219)).save(buffer, format="PNG")
     return buffer.getvalue()
+
+
+def configure_extension_store(monkeypatch, tmp_path, **overrides) -> None:
+    monkeypatch.setenv("EXTENSION_INSTALLATION_STORE_PATH", str(tmp_path / "installations.json"))
+    for key, value in overrides.items():
+        monkeypatch.setenv(key, str(value))
+    get_settings.cache_clear()
+
+
+def register_extension(client: TestClient) -> str:
+    response = client.post(
+        "/api/extension/v1/installations",
+        json={"extension_version": "0.1.0"},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["installation_id"].startswith("inst_")
+    assert body["token_type"] == "Bearer"
+    assert body["installation_token"]
+    return body["installation_token"]
 
 
 def test_health_reports_production_runtime() -> None:
@@ -148,6 +171,228 @@ def test_private_url_only_text_is_rejected() -> None:
 
     assert response.status_code == 422
     assert "URL" in response.json()["detail"]
+
+
+def test_extension_installation_registration_and_rate_limit(monkeypatch, tmp_path) -> None:
+    configure_extension_store(monkeypatch, tmp_path, EXTENSION_REGISTRATION_IP_LIMIT_PER_HOUR=1)
+
+    with TestClient(app) as client:
+        first = client.post(
+            "/api/extension/v1/installations",
+            json={"extension_version": "0.1.0"},
+        )
+        second = client.post(
+            "/api/extension/v1/installations",
+            json={"extension_version": "0.1.0"},
+        )
+
+    assert first.status_code == 201
+    assert second.status_code == 429
+    assert second.headers["retry-after"]
+    assert second.json()["error"]["code"] == "RATE_LIMITED"
+
+
+def test_extension_token_missing_invalid_and_internal_rejection(monkeypatch, tmp_path) -> None:
+    configure_extension_store(monkeypatch, tmp_path)
+    monkeypatch.setenv("WASPADAI_API_KEYS", "internal-secret")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        token = register_extension(client)
+        missing = client.post(
+            "/api/extension/v1/verify/text",
+            json={"text": "Teks ini cukup panjang untuk diperiksa dari extension."},
+        )
+        invalid = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": "Bearer token-yang-salah"},
+            json={"text": "Teks ini cukup panjang untuk diperiksa dari extension."},
+        )
+        internal = client.post(
+            "/api/internal/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"text": "Teks ini cukup panjang untuk endpoint internal."},
+        )
+
+    assert missing.status_code == 401
+    assert missing.json()["error"]["code"] == "INVALID_INSTALLATION_TOKEN"
+    assert invalid.status_code == 401
+    assert invalid.json()["error"]["code"] == "INVALID_INSTALLATION_TOKEN"
+    assert internal.status_code == 401
+
+
+def test_extension_token_refresh_keeps_installation_and_old_token_overlap(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    configure_extension_store(monkeypatch, tmp_path, EXTENSION_TOKEN_OVERLAP_SECONDS=60)
+
+    with TestClient(app) as client:
+        old_token = register_extension(client)
+        refresh = client.post(
+            "/api/extension/v1/installations/refresh",
+            headers={"Authorization": f"Bearer {old_token}"},
+        )
+        new_token = refresh.json()["installation_token"]
+        old_still_valid = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {old_token}"},
+            json={"text": "Teks ini cukup panjang untuk memastikan token lama overlap."},
+        )
+        new_valid = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {new_token}"},
+            json={"text": "Teks ini cukup panjang untuk memastikan token baru aktif."},
+        )
+
+    assert refresh.status_code == 200
+    assert refresh.json()["installation_id"]
+    assert new_token != old_token
+    assert old_still_valid.status_code == 200
+    assert new_valid.status_code == 200
+
+
+def test_extension_token_expired_and_blocked(monkeypatch, tmp_path) -> None:
+    store_path = tmp_path / "installations.json"
+    configure_extension_store(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        token = register_extension(client)
+
+    store = json.loads(store_path.read_text(encoding="utf-8"))
+    record = next(iter(store["installations"].values()))
+    record["token_expires_at"] = (
+        datetime.now(timezone.utc) - timedelta(minutes=1)
+    ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    store_path.write_text(json.dumps(store), encoding="utf-8")
+
+    with TestClient(app) as client:
+        expired = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"text": "Teks ini cukup panjang untuk token expired."},
+        )
+
+    record["token_expires_at"] = (
+        datetime.now(timezone.utc) + timedelta(days=1)
+    ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    record["blocked"] = True
+    store_path.write_text(json.dumps(store), encoding="utf-8")
+
+    with TestClient(app) as client:
+        blocked = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"text": "Teks ini cukup panjang untuk token blocked."},
+        )
+
+    assert expired.status_code == 401
+    assert expired.json()["error"]["code"] == "INSTALLATION_TOKEN_EXPIRED"
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "INSTALLATION_BLOCKED"
+
+
+def test_extension_text_verification_supports_page_context(monkeypatch, tmp_path) -> None:
+    configure_extension_store(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        token = register_extension(client)
+        response = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "text": "Pemerintah disebut memberikan bantuan Rp5 juta untuk semua pemilik KTP.",
+                "question": "Apakah informasi ini benar dan aman?",
+                "source_url": "https://example.com/artikel?utm_source=tracking#frag",
+                "sender_context": "SOCIAL_MEDIA",
+                "page_context": {
+                    "title": "Posting viral bantuan",
+                    "before": "Unggahan ramai dibagikan hari ini.",
+                    "after": "Komentar meminta pembaca segera klik link.",
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "COMPLETED"
+    assert "data" not in body
+    assert body["input_summary"]["source_url"] == "https://example.com/artikel"
+
+
+def test_extension_page_context_validation_errors_use_public_envelope(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    configure_extension_store(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        token = register_extension(client)
+        empty_context = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "text": "Teks ini cukup panjang untuk pemeriksaan extension.",
+                "page_context": {},
+            },
+        )
+        too_long_title = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={
+                "text": "Teks ini cukup panjang untuk pemeriksaan extension.",
+                "page_context": {"title": "x" * 301},
+            },
+        )
+
+    assert empty_context.status_code == 422
+    assert empty_context.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert too_long_title.status_code == 422
+    assert too_long_title.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_extension_text_rate_limit_per_installation(monkeypatch, tmp_path) -> None:
+    configure_extension_store(monkeypatch, tmp_path, EXTENSION_TEXT_INSTALLATION_LIMIT_PER_MINUTE=1)
+
+    with TestClient(app) as client:
+        token = register_extension(client)
+        first = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"text": "Teks ini cukup panjang untuk request pertama."},
+        )
+        second = client.post(
+            "/api/extension/v1/verify/text",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"text": "Teks ini cukup panjang untuk request kedua."},
+        )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.headers["retry-after"]
+    assert second.json()["error"]["code"] == "RATE_LIMITED"
+
+
+def test_extension_image_validation_uses_public_error_envelope(monkeypatch, tmp_path) -> None:
+    configure_extension_store(monkeypatch, tmp_path)
+
+    with TestClient(app) as client:
+        token = register_extension(client)
+        bad_media = client.post(
+            "/api/extension/v1/verify/image",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"image": ("not-image.txt", b"hello", "text/plain")},
+        )
+        arbitrary_url = client.post(
+            "/api/extension/v1/verify/image",
+            headers={"Authorization": f"Bearer {token}"},
+            data={"image_url": "https://example.com/image.png"},
+        )
+
+    assert bad_media.status_code == 415
+    assert bad_media.json()["error"]["code"] == "UNSUPPORTED_MEDIA_TYPE"
+    assert arbitrary_url.status_code == 422
+    assert arbitrary_url.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_internal_text_verification_requires_configured_api_key(

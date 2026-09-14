@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     app_name: str = "WaspadAI"
     app_env: str = "development"
     waspadai_api_keys: str = ""
+    extension_installation_store_path: Path = PROJECT_ROOT / "runtime" / "extension_installations.json"
+    extension_token_lifetime_days: int = Field(default=90, ge=1, le=730)
+    extension_token_overlap_seconds: int = Field(default=300, ge=0, le=3600)
+    extension_registration_ip_limit_per_hour: int = Field(default=20, ge=1, le=10_000)
+    extension_text_installation_limit_per_minute: int = Field(default=10, ge=1, le=1000)
+    extension_image_installation_limit_per_minute: int = Field(default=4, ge=1, le=500)
+    extension_ip_verify_limit_per_minute: int = Field(default=30, ge=1, le=5000)
+    extension_concurrent_requests_per_installation: int = Field(default=2, ge=1, le=20)
+    extension_allowed_origins: str = ""
 
     groq_api_key: str = ""
     groq_vision_model: str = "qwen/qwen3.6-27b"

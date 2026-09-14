@@ -24,6 +24,7 @@ from app.schemas import (
     SourceView,
     VerificationResponse,
     VerificationDecision,
+    PageContext,
 )
 from app.services.groq_service import (
     GroqFactCheckService,
@@ -129,7 +130,7 @@ class FactCheckPipeline:
             max_urls=self.settings.max_case_urls,
         )
         redacted_ocr, ocr_pii_types = redact_pii(sanitized_ocr)
-        normalized_question = normalize_text(question[:500])
+        normalized_question = normalize_text(question[: self.settings.max_image_question_chars])
         sanitized_question, _ = sanitize_urls_in_text(
             normalized_question,
             max_urls=self.settings.max_case_urls,
@@ -233,6 +234,7 @@ class FactCheckPipeline:
         question: str,
         source_url: str | None,
         sender_context: str,
+        page_context: PageContext | None = None,
     ) -> VerificationResponse:
         request_id = f"req_{uuid.uuid4().hex[:12]}"
         trace_id = f"trace_{uuid.uuid4().hex[:16]}"
@@ -249,6 +251,7 @@ class FactCheckPipeline:
             source_url=source_url,
             sender_context=sender_context,
             max_urls=self.settings.max_case_urls,
+            page_context=page_context,
         )
         stages = [
             PipelineStage(
@@ -272,6 +275,7 @@ class FactCheckPipeline:
             input_data={
                 "character_count": len(text),
                 "question": case.question,
+                "page_context": case.page_context,
                 "source_url": case.source_url,
                 "sender_context": case.sender_context,
             },

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 VerdictLabel = Literal[
@@ -89,6 +89,19 @@ class VisionOutput(StrictModel):
     vision_confidence: float = Field(ge=0, le=1)
 
 
+class PageContext(StrictModel):
+    title: str | None = Field(default=None, max_length=300)
+    before: str | None = Field(default=None, max_length=500)
+    after: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def has_context_value(self) -> "PageContext":
+        values = (self.title, self.before, self.after)
+        if not any(value and value.strip() for value in values):
+            raise ValueError("page_context harus memiliki minimal satu field berisi nilai.")
+        return self
+
+
 class TextVerificationRequest(StrictModel):
     text: str = Field(min_length=10, max_length=25_000)
     question: str = Field(
@@ -97,6 +110,18 @@ class TextVerificationRequest(StrictModel):
     )
     source_url: str | None = Field(default=None, max_length=2048)
     sender_context: SenderContext = "UNKNOWN"
+    page_context: PageContext | None = None
+
+
+class ExtensionInstallationRequest(StrictModel):
+    extension_version: str = Field(default="unknown", max_length=80)
+
+
+class ExtensionInstallationResponse(StrictModel):
+    installation_id: str
+    installation_token: str
+    token_type: Literal["Bearer"]
+    expires_at: str
 
 
 class CaseContext(StrictModel):
@@ -106,6 +131,7 @@ class CaseContext(StrictModel):
     content_type: str
     safe_text: str
     question: str
+    page_context: PageContext | None = None
     source_url: str | None
     sender_context: SenderContext
     platform: str | None

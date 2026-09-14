@@ -16,6 +16,7 @@ RUN python -m pip install --upgrade pip \
 
 COPY app ./app
 COPY rulebook ./rulebook
+RUN mkdir -p /app/runtime
 
 RUN addgroup --system waspadai \
     && adduser --system --ingroup waspadai waspadai \

@@ -27,3 +27,4 @@ Thumbs.db
 
 # Local artifacts
 artifacts/
+**/runtime/

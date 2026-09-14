@@ -4,6 +4,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from app.schemas import (
     CaseContext,
+    PageContext,
     SenderContext,
     TextContentType,
     VisionClaim,
@@ -26,6 +27,7 @@ def build_text_case(
     source_url: str | None,
     sender_context: SenderContext,
     max_urls: int,
+    page_context: PageContext | None = None,
 ) -> tuple[CaseContext, list[str]]:
     normalized = normalize_text(text)
     if len(normalized) < 10:
@@ -38,6 +40,7 @@ def build_text_case(
         sanitized_text = "URL untuk diperiksa: " + ", ".join(embedded_urls[:max_urls])
     safe_text, text_pii = redact_pii(sanitized_text)
     safe_question, question_pii = _safe_free_text(question, limit=500)
+    safe_page_context, page_context_pii = _safe_page_context(page_context)
     safe_source_url = sanitize_source_url(source_url)
     urls = _unique([*(embedded_urls[:max_urls]), *([safe_source_url] if safe_source_url else [])])[
         :max_urls
@@ -50,6 +53,7 @@ def build_text_case(
             content_type=content_type,
             safe_text=safe_text,
             question=safe_question,
+            page_context=safe_page_context,
             source_url=safe_source_url,
             sender_context=sender_context,
             platform=_infer_platform(safe_text, sender_context),
@@ -63,7 +67,7 @@ def build_text_case(
             source_character_count=len(normalized),
             language=_infer_language(safe_text),
         ),
-        _unique([*text_pii, *question_pii]),
+        _unique([*text_pii, *question_pii, *page_context_pii]),
     )
 
 
@@ -100,6 +104,7 @@ def build_image_case(
             content_type=vision.content_type[:80] or "unknown_image",
             safe_text=safe_ocr,
             question=safe_question,
+            page_context=None,
             source_url=None,
             sender_context="NOT_APPLICABLE",
             platform=(vision.platform or "")[:80] or None,
@@ -197,6 +202,24 @@ def _safe_free_text(value: str, limit: int) -> tuple[str, list[str]]:
     normalized = normalize_text((value or "")[:limit])
     sanitized, _ = sanitize_urls_in_text(normalized, max_urls=10)
     return redact_pii(sanitized)
+
+
+def _safe_page_context(page_context: PageContext | None) -> tuple[PageContext | None, list[str]]:
+    if page_context is None:
+        return None, []
+    pii_types: list[str] = []
+    values: dict[str, str | None] = {}
+    for key, limit in (("title", 300), ("before", 500), ("after", 500)):
+        value = getattr(page_context, key)
+        if value is None:
+            values[key] = None
+            continue
+        safe_value, value_pii = _safe_free_text(value, limit=limit)
+        values[key] = safe_value or None
+        pii_types.extend(value_pii)
+    if not any(values.values()):
+        return None, pii_types
+    return PageContext(**values), pii_types
 
 
 def _is_url_only_text(value: str) -> bool:

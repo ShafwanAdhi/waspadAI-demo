@@ -21,6 +21,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/extension/v1/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Extension Health */
+        get: operations["extension_health_api_extension_v1_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extension/v1/installations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Extension Installation */
+        post: operations["create_extension_installation_api_extension_v1_installations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extension/v1/installations/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Extension Installation */
+        post: operations["refresh_extension_installation_api_extension_v1_installations_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extension/v1/verify/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Extension Text */
+        post: operations["verify_extension_text_api_extension_v1_verify_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extension/v1/verify/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Extension Image */
+        post: operations["verify_extension_image_api_extension_v1_verify_image_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/verify/image": {
         parameters: {
             query?: never;
@@ -123,6 +208,19 @@ export interface components {
              */
             content_authenticity: "ORIGINAL" | "ALTERED" | "SYNTHETIC" | "UNVERIFIED" | "NOT_APPLICABLE";
         };
+        /** Body_verify_extension_image_api_extension_v1_verify_image_post */
+        Body_verify_extension_image_api_extension_v1_verify_image_post: {
+            /**
+             * Image
+             * Format: binary
+             */
+            image: string;
+            /**
+             * Question
+             * @default Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?
+             */
+            question: string;
+        };
         /** Body_verify_image_api_v1_verify_image_post */
         Body_verify_image_api_v1_verify_image_post: {
             /**
@@ -186,6 +284,28 @@ export interface components {
              */
             verification_status: "VERIFIED" | "REVIEWED" | "UNVERIFIED";
         };
+        /** ExtensionInstallationRequest */
+        ExtensionInstallationRequest: {
+            /**
+             * Extension Version
+             * @default unknown
+             */
+            extension_version: string;
+        };
+        /** ExtensionInstallationResponse */
+        ExtensionInstallationResponse: {
+            /** Installation Id */
+            installation_id: string;
+            /** Installation Token */
+            installation_token: string;
+            /**
+             * Token Type
+             * @constant
+             */
+            token_type: "Bearer";
+            /** Expires At */
+            expires_at: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -223,6 +343,15 @@ export interface components {
             urls_detected: number;
             /** Pii Types Redacted */
             pii_types_redacted: string[];
+        };
+        /** PageContext */
+        PageContext: {
+            /** Title */
+            title?: string | null;
+            /** Before */
+            before?: string | null;
+            /** After */
+            after?: string | null;
         };
         /** PipelineStage */
         PipelineStage: {
@@ -294,6 +423,7 @@ export interface components {
              * @enum {string}
              */
             sender_context: "NOT_APPLICABLE" | "UNKNOWN_NUMBER" | "KNOWN_CONTACT" | "FORWARDED" | "SOCIAL_MEDIA" | "UNKNOWN";
+            page_context?: components["schemas"]["PageContext"] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -394,6 +524,162 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    extension_health_api_extension_v1_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    create_extension_installation_api_extension_v1_installations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExtensionInstallationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtensionInstallationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_extension_installation_api_extension_v1_installations_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtensionInstallationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_extension_text_api_extension_v1_verify_text_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TextVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_extension_image_api_extension_v1_verify_image_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_verify_extension_image_api_extension_v1_verify_image_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

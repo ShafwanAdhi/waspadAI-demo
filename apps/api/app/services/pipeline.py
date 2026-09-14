@@ -397,7 +397,7 @@ class FactCheckPipeline:
         self.debug_traces.add_stage(
             trace_id,
             key="investigation_planner",
-            label="Investigation planner Â· 20B first pass",
+            label="Investigation planner - 20B first pass",
             status=first_pass_status,
             duration_ms=_elapsed_ms(planner_started),
             runtime="GROQ",
@@ -502,7 +502,7 @@ class FactCheckPipeline:
             self.debug_traces.add_stage(
                 trace_id,
                 key="planner_review",
-                label="Senior planner review Â· 120B",
+                label="Senior planner review - 120B",
                 status=review_status,
                 duration_ms=_elapsed_ms(review_started),
                 runtime="GROQ",
@@ -536,7 +536,7 @@ class FactCheckPipeline:
             self.debug_traces.add_stage(
                 trace_id,
                 key="planner_review",
-                label="Senior planner review Â· 120B",
+                label="Senior planner review - 120B",
                 status="SKIPPED",
                 runtime="GROQ",
                 model=self.settings.groq_escalation_model,
@@ -1323,7 +1323,7 @@ def _text_input_summary(case: CaseContext, pii_types: list[str]) -> InputSummary
     return InputSummary(
         input_type="TEXT",
         content_type=case.content_type,
-        label=f"Teks tempel Â· {case.source_character_count} karakter",
+        label=f"Teks tempel - {case.source_character_count} karakter",
         media_type="text/plain",
         dimensions=None,
         extraction_status="OK",

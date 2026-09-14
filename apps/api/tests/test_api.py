@@ -2,6 +2,7 @@ import io
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from app.config import get_settings
 from app.main import app
 
 
@@ -101,6 +102,78 @@ def test_live_text_verification_has_image_feature_parity() -> None:
     assert text_body["sources"]
     assert len(text_body["pipeline"]) == 5
     assert text_body["rulebook"]["selected_count"] > 0
+
+
+def test_internal_text_verification_requires_configured_api_key(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WASPADAI_API_KEYS", "")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/internal/v1/verify/text",
+            json={"text": "Teks ini cukup panjang untuk diperiksa oleh endpoint internal."},
+        )
+
+    assert response.status_code == 503
+    assert "WASPADAI_API_KEYS" in response.json()["detail"]
+
+
+def test_internal_text_verification_rejects_missing_or_invalid_api_key(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WASPADAI_API_KEYS", "alpha-secret,beta-secret")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        missing = client.post(
+            "/api/internal/v1/verify/text",
+            json={"text": "Teks ini cukup panjang untuk diperiksa oleh endpoint internal."},
+        )
+        invalid = client.post(
+            "/api/internal/v1/verify/text",
+            headers={"X-Waspadai-API-Key": "wrong-secret"},
+            json={"text": "Teks ini cukup panjang untuk diperiksa oleh endpoint internal."},
+        )
+
+    assert missing.status_code == 401
+    assert invalid.status_code == 401
+
+
+def test_internal_text_verification_accepts_valid_api_key(monkeypatch) -> None:
+    monkeypatch.setenv("WASPADAI_API_KEYS", "alpha-secret,beta-secret")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/internal/v1/verify/text",
+            headers={"X-Waspadai-API-Key": "beta-secret"},
+            json={"text": "Teks ini cukup panjang untuk diperiksa oleh endpoint internal."},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "LIVE"
+
+
+def test_internal_image_verification_requires_valid_api_key(monkeypatch) -> None:
+    monkeypatch.setenv("WASPADAI_API_KEYS", "image-secret")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        rejected = client.post(
+            "/api/internal/v1/verify/image",
+            files={"image": ("sample.png", png_payload(), "image/png")},
+        )
+        accepted = client.post(
+            "/api/internal/v1/verify/image",
+            headers={"X-Waspadai-API-Key": "image-secret"},
+            files={"image": ("sample.png", png_payload(), "image/png")},
+            data={"question": "Apakah aman?"},
+        )
+
+    assert rejected.status_code == 401
+    assert accepted.status_code == 200
 
 
 def test_text_input_redacts_pii_and_sanitizes_source_url() -> None:

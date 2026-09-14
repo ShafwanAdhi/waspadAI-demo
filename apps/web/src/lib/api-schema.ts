@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/internal/v1/verify/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Internal Image */
+        post: operations["verify_internal_image_api_internal_v1_verify_image_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/verify/text": {
         parameters: {
             query?: never;
@@ -49,6 +66,23 @@ export interface paths {
         put?: never;
         /** Verify Text */
         post: operations["verify_text_api_v1_verify_text_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/internal/v1/verify/text": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Internal Text */
+        post: operations["verify_internal_text_api_internal_v1_verify_text_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -91,6 +125,19 @@ export interface components {
         };
         /** Body_verify_image_api_v1_verify_image_post */
         Body_verify_image_api_v1_verify_image_post: {
+            /**
+             * Image
+             * Format: binary
+             */
+            image: string;
+            /**
+             * Question
+             * @default Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?
+             */
+            question: string;
+        };
+        /** Body_verify_internal_image_api_internal_v1_verify_image_post */
+        Body_verify_internal_image_api_internal_v1_verify_image_post: {
             /**
              * Image
              * Format: binary
@@ -384,10 +431,80 @@ export interface operations {
             };
         };
     };
+    verify_internal_image_api_internal_v1_verify_image_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-waspadai-api-key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_verify_internal_image_api_internal_v1_verify_image_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     verify_text_api_v1_verify_text_post: {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TextVerificationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_internal_text_api_internal_v1_verify_text_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-waspadai-api-key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

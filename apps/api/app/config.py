@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     app_name: str = "WaspadAI"
     app_env: str = "development"
+    waspadai_api_keys: str = ""
 
     groq_api_key: str = ""
     groq_vision_model: str = "qwen/qwen3.6-27b"

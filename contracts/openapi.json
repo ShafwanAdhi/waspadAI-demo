@@ -64,6 +64,62 @@
         }
       }
     },
+    "/api/internal/v1/verify/image": {
+      "post": {
+        "summary": "Verify Internal Image",
+        "operationId": "verify_internal_image_api_internal_v1_verify_image_post",
+        "parameters": [
+          {
+            "name": "x-waspadai-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Waspadai-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_verify_internal_image_api_internal_v1_verify_image_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/verify/text": {
       "post": {
         "summary": "Verify Text",
@@ -77,6 +133,62 @@
             }
           },
           "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerificationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/internal/v1/verify/text": {
+      "post": {
+        "summary": "Verify Internal Text",
+        "operationId": "verify_internal_text_api_internal_v1_verify_text_post",
+        "parameters": [
+          {
+            "name": "x-waspadai-api-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Waspadai-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TextVerificationRequest"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
@@ -214,6 +326,25 @@
           "image"
         ],
         "title": "Body_verify_image_api_v1_verify_image_post"
+      },
+      "Body_verify_internal_image_api_internal_v1_verify_image_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "format": "binary",
+            "title": "Image"
+          },
+          "question": {
+            "type": "string",
+            "title": "Question",
+            "default": "Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_verify_internal_image_api_internal_v1_verify_image_post"
       },
       "Evidence": {
         "properties": {

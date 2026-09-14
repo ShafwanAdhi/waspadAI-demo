@@ -1,7 +1,9 @@
 from contextlib import asynccontextmanager
+from hmac import compare_digest
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from groq import AuthenticationError, RateLimitError
@@ -106,11 +108,74 @@ async def get_groq_rate_limits(request: Request) -> dict:
     return pipeline.rate_limits.snapshot()
 
 
+def _configured_internal_api_keys(settings) -> list[str]:
+    return [
+        item.strip()
+        for item in settings.waspadai_api_keys.split(",")
+        if item.strip()
+    ]
+
+
+def _require_internal_api_key(
+    request: Request,
+    x_waspadai_api_key: Annotated[str | None, Header()] = None,
+) -> None:
+    settings = request.app.state.settings
+    configured_keys = _configured_internal_api_keys(settings)
+    if not configured_keys:
+        raise HTTPException(
+            status_code=503,
+            detail="WASPADAI_API_KEYS belum dikonfigurasi untuk API internal.",
+        )
+
+    supplied_key = (x_waspadai_api_key or "").strip()
+    if not supplied_key:
+        raise HTTPException(status_code=401, detail="Header X-Waspadai-API-Key wajib diisi.")
+
+    if not any(compare_digest(supplied_key, expected_key) for expected_key in configured_keys):
+        raise HTTPException(status_code=401, detail="API key internal tidak valid.")
+
+
 @app.post("/api/v1/verify/image", response_model=VerificationResponse)
 async def verify_image(
     request: Request,
     image: UploadFile = File(...),
     question: str = Form("Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"),
+) -> VerificationResponse:
+    return await _verify_image(request, image, question)
+
+
+@app.post("/api/internal/v1/verify/image", response_model=VerificationResponse)
+async def verify_internal_image(
+    request: Request,
+    _: Annotated[None, Depends(_require_internal_api_key)],
+    image: UploadFile = File(...),
+    question: str = Form("Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"),
+) -> VerificationResponse:
+    return await _verify_image(request, image, question)
+
+
+@app.post("/api/v1/verify/text", response_model=VerificationResponse)
+async def verify_text(
+    request: Request,
+    payload: TextVerificationRequest,
+) -> VerificationResponse:
+    return await _verify_text(request, payload)
+
+
+@app.post("/api/internal/v1/verify/text", response_model=VerificationResponse)
+async def verify_internal_text(
+    request: Request,
+    payload: TextVerificationRequest,
+    _: Annotated[None, Depends(_require_internal_api_key)],
+) -> VerificationResponse:
+    return await _verify_text(request, payload)
+
+
+async def _verify_image(
+    request: Request,
+    image: UploadFile,
+    question: str,
 ) -> VerificationResponse:
     settings = request.app.state.settings
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -166,8 +231,7 @@ async def verify_image(
         ) from exc
 
 
-@app.post("/api/v1/verify/text", response_model=VerificationResponse)
-async def verify_text(
+async def _verify_text(
     request: Request,
     payload: TextVerificationRequest,
 ) -> VerificationResponse:

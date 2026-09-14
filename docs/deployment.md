@@ -25,12 +25,13 @@ Nilai minimum produksi:
 
 ```env
 APP_ENV=production
+WASPADAI_API_KEYS=isi_key_internal_panjang_acak
 GROQ_API_KEY=gsk_isi_kredensial_produksi
 TAVILY_API_KEY=tvly-isi_kredensial_produksi
 DEBUG_TRACE_ENABLED=false
 ```
 
-File `.env` sudah diabaikan Git dan Docker build context. Jangan menaruh secret Groq/Tavily di `apps/web/.env*` atau variabel berawalan `NEXT_PUBLIC_`.
+File `.env` sudah diabaikan Git dan Docker build context. Jangan menaruh secret Groq/Tavily/API internal di `apps/web/.env*` atau variabel berawalan `NEXT_PUBLIC_`. Endpoint server-to-server ada di `/api/internal/v1/*` dan dijelaskan di `docs/api.md`.
 
 ## Jalankan stack
 

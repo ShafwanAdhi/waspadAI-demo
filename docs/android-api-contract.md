@@ -1,10 +1,42 @@
 # Kontrak API Android WaspadAI
 
-Status dokumen: kontrak integrasi MVP yang telah disepakati. Endpoint Android
-diimplementasikan pada repository FastAPI aplikasi, bukan pada repository demo
-WaspadAI ini.
+Status dokumen: kontrak integrasi MVP untuk aplikasi Android/Kotlin yang memakai
+API AI WaspadAI pada repository ini.
+
+Keputusan integrasi saat ini: aplikasi Android boleh memanggil endpoint publik
+WaspadAI secara langsung setelah pengguna login di aplikasi. Login Supabase
+dipakai oleh aplikasi Android untuk mengontrol akses fitur, tetapi token
+Supabase tidak divalidasi oleh API WaspadAI pada mode demo ini.
 
 ## 1. Batas sistem
+
+Mode MVP yang dipakai sekarang:
+
+```text
+Android Kotlin -> Public WaspadAI API -> pipeline fact-check
+        |
+        +-- Supabase login diperiksa di aplikasi Android
+```
+
+Pada mode ini, Android memakai endpoint publik WaspadAI:
+
+```text
+GET  https://waspadai.shafwan.digital/api/health
+POST https://waspadai.shafwan.digital/api/v1/verify/text
+POST https://waspadai.shafwan.digital/api/v1/verify/image
+```
+
+Android tidak boleh memanggil endpoint internal WaspadAI:
+
+```text
+POST https://waspadai.shafwan.digital/api/internal/v1/verify/text
+POST https://waspadai.shafwan.digital/api/internal/v1/verify/image
+```
+
+Endpoint internal membutuhkan `X-Waspadai-API-Key`. Secret itu hanya boleh
+disimpan di server, bukan di aplikasi Android, karena APK dapat dibongkar.
+
+Mode lanjutan yang dapat dipakai nanti:
 
 ```text
 Android -> FastAPI aplikasi -> FastAPI WaspadAI -> pipeline fact-check
@@ -13,29 +45,39 @@ Android -> FastAPI aplikasi -> FastAPI WaspadAI -> pipeline fact-check
              +-- Supabase Auth, history, Storage, komunitas, dan voting
 ```
 
-Android hanya memanggil FastAPI aplikasi. Android tidak boleh memanggil endpoint
-internal WaspadAI, mengetahui `WASPADAI_API_KEYS`, atau mengirim `user_id`
-sendiri.
-
-Website demo pada repository WaspadAI berada di luar kontrak ini dan tetap dapat
-memakai endpoint publik WaspadAI secara anonim.
+Mode lanjutan diperlukan jika history, Storage, komunitas, voting, ownership,
+dan moderasi ingin dikelola secara server-side. Pada mode itu Android memanggil
+FastAPI aplikasi, sedangkan FastAPI aplikasi memanggil endpoint internal
+WaspadAI menggunakan `X-Waspadai-API-Key`.
 
 ## 2. Base URL dan autentikasi
 
-Base URL production ditentukan oleh tim backend aplikasi:
+Base URL AI WaspadAI yang dipakai Android pada mode MVP:
 
 ```text
-https://<domain-backend-aplikasi>/api/v1
+https://waspadai.shafwan.digital
 ```
 
-Setiap request Android wajib mengirim access token sesi Supabase:
+Endpoint verifikasi yang dipakai Android:
+
+```text
+POST /api/v1/verify/text
+POST /api/v1/verify/image
+```
+
+Sebelum memanggil endpoint tersebut, aplikasi Android harus memastikan pengguna
+sudah login melalui Supabase. API WaspadAI mode demo tidak menerima dan tidak
+memvalidasi header `Authorization`.
+
+Jika nanti memakai FastAPI aplikasi terpisah, barulah setiap request Android
+wajib mengirim access token sesi Supabase:
 
 ```http
 Authorization: Bearer <supabase_access_token>
 Accept: application/json
 ```
 
-FastAPI aplikasi harus:
+Pada mode lanjutan tersebut, FastAPI aplikasi harus:
 
 1. mengambil Bearer token dari header `Authorization`;
 2. memvalidasi token melalui `supabase.auth.get_user(access_token)` pada MVP;
@@ -44,9 +86,9 @@ FastAPI aplikasi harus:
 5. menggunakan `user_id` tersebut untuk semua operasi history, Storage, vote,
    dan kepemilikan kasus.
 
-Android tidak mengirim refresh token ke API. Jika menerima `401`, Android
-meminta Supabase SDK memperbarui session lalu mengulang request paling banyak
-satu kali.
+Android tidak mengirim refresh token ke API aplikasi. Jika menerima `401` dari
+FastAPI aplikasi, Android meminta Supabase SDK memperbarui session lalu
+mengulang request paling banyak satu kali.
 
 Untuk request pemeriksaan, Android sebaiknya mengirim UUID yang tetap sama saat
 mengulang aksi yang sama:
@@ -55,9 +97,10 @@ mengulang aksi yang sama:
 Idempotency-Key: <uuid-v4>
 ```
 
-Header ini mencegah retry jaringan menjalankan pipeline AI dua kali. Backend
-dapat menyimpan pasangan `user_id + Idempotency-Key` secara singkat, misalnya
-10 menit.
+Pada mode MVP direct-to-WaspadAI, header ini belum diproses oleh WaspadAI dan
+bersifat opsional. Pada mode lanjutan, header ini mencegah retry jaringan
+menjalankan pipeline AI dua kali; backend aplikasi dapat menyimpan pasangan
+`user_id + Idempotency-Key` secara singkat, misalnya 10 menit.
 
 ## 3. Karakteristik pemeriksaan
 
@@ -67,15 +110,16 @@ dapat menyimpan pasangan `user_id + Idempotency-Key` secara singkat, misalnya
 - Naratif menjadi tampilan utama.
 - Bukti, sumber, tindakan, dan detail tetap dikirim sebagai data terstruktur
   untuk bagian UI yang dapat dibuka.
-- Backend aplikasi meminta `output_mode=BOTH` kepada WaspadAI. Android tidak
-  perlu mengirim atau mengelola `output_mode`.
+- Pada mode MVP, Android sebaiknya mengirim `output_mode=BOTH` agar mendapatkan
+  hasil naratif dan data terstruktur dalam satu request.
+- Pada mode lanjutan, backend aplikasi dapat selalu meminta `output_mode=BOTH`
+  kepada WaspadAI sehingga Android tidak perlu mengelola mode output.
 
 ## 4. Pemeriksaan teks
 
 ```http
-POST /api/v1/verifications/text
+POST /api/v1/verify/text
 Content-Type: application/json
-Authorization: Bearer <supabase_access_token>
 ```
 
 Request:
@@ -85,7 +129,8 @@ Request:
   "text": "Pesan mengaku dari bank dan meminta OTP agar akun tidak diblokir.",
   "question": "Apakah pesan ini aman?",
   "source_url": null,
-  "sender_context": "UNKNOWN_NUMBER"
+  "sender_context": "UNKNOWN_NUMBER",
+  "output_mode": "BOTH"
 }
 ```
 
@@ -93,10 +138,11 @@ Field:
 
 | Field | Wajib | Aturan |
 | --- | --- | --- |
-| `text` | Ya | 10–25.000 karakter setelah trim |
+| `text` | Ya | 10-25.000 karakter setelah trim |
 | `question` | Tidak | Maksimal 500 karakter; backend memakai pertanyaan default jika kosong |
 | `source_url` | Tidak | URL publik maksimal 2.048 karakter |
 | `sender_context` | Tidak | Default `UNKNOWN` |
+| `output_mode` | Tidak | Gunakan `BOTH` agar response berisi naratif dan data terstruktur |
 
 Nilai `sender_context`:
 
@@ -115,9 +161,8 @@ private IP, dan URL internal harus ditolak.
 ## 5. Pemeriksaan screenshot
 
 ```http
-POST /api/v1/verifications/image
+POST /api/v1/verify/image
 Content-Type: multipart/form-data
-Authorization: Bearer <supabase_access_token>
 ```
 
 Multipart fields:
@@ -126,14 +171,15 @@ Multipart fields:
 | --- | --- | --- |
 | `image` | Ya | File biner JPG, PNG, atau WEBP |
 | `question` | Tidak | Maksimal 500 karakter |
+| `output_mode` | Tidak | Gunakan `BOTH` agar response berisi naratif dan data terstruktur |
 
 Batas gambar:
 
 | Batas | Nilai |
 | --- | --- |
 | Ukuran file | Maksimal 8 MB |
-| Dimensi minimal | 64 × 64 piksel |
-| Dimensi maksimal | 6.000 × 6.000 piksel |
+| Dimensi minimal | 64 x 64 piksel |
+| Dimensi maksimal | 6.000 x 6.000 piksel |
 | Jumlah piksel | Maksimal 30.000.000 piksel |
 | Format | JPEG/JPG, PNG, WEBP |
 
@@ -149,7 +195,71 @@ tidak boleh membuat teks pada screenshot sulit dibaca.
 
 ## 6. Respons pemeriksaan
 
-Backend aplikasi membungkus hasil WaspadAI dengan metadata history:
+Pada mode MVP direct-to-WaspadAI, response dikembalikan langsung oleh API
+WaspadAI. Tidak ada wrapper `result` dan tidak ada metadata `history` dari API
+ini.
+
+Contoh bentuk response yang perlu dibaca Android:
+
+```json
+{
+  "request_id": "req_01kotlinexample",
+  "status": "COMPLETED",
+  "mode": "LIVE",
+  "verdict": "UNVERIFIED",
+  "risk_level": "MEDIUM",
+  "headline": "Bukti belum cukup untuk memastikan klaim",
+  "evidence_sufficiency": 0.42,
+  "evidence_sufficiency_label": "Bukti belum cukup untuk memastikan klaim",
+  "requires_human_review": true,
+  "community_status": "ELIGIBLE_WITH_CONSENT",
+  "what_checked": [
+    "Klaim utama pada pesan",
+    "Kecocokan dengan sumber yang ditemukan"
+  ],
+  "why": [
+    "Bukti yang ditemukan belum mencakup seluruh klaim material."
+  ],
+  "evidence": [],
+  "sources": [],
+  "recommended_actions": [
+    {
+      "code": "RETURN_UNVERIFIED",
+      "title": "Tunggu bukti yang lebih kuat",
+      "detail": "Jangan jadikan informasi ini satu-satunya dasar keputusan."
+    }
+  ],
+  "uncertainty": "Masih diperlukan sumber primer atau sumber tepercaya lain.",
+  "dimensions": {
+    "factual_status": "UNVERIFIED",
+    "source_authenticity": "UNVERIFIED",
+    "sender_identity": "UNVERIFIED",
+    "channel_status": "UNVERIFIED",
+    "scam_risk": "MEDIUM",
+    "content_authenticity": "NOT_APPLICABLE"
+  },
+  "presentation": {
+    "requested_mode": "BOTH",
+    "structured": true,
+    "narrative": {
+      "text": "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim. Periksa kembali sumber resmi sebelum menindaklanjutinya.",
+      "summary": "Bukti belum cukup untuk memastikan klaim",
+      "paragraphs": [
+        "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim.",
+        "Periksa kembali sumber resmi sebelum menindaklanjutinya."
+      ]
+    },
+  },
+  "disclaimer": "Fact-check adalah dukungan keputusan, bukan jaminan."
+}
+```
+
+Android harus memakai `presentation.narrative.text` sebagai jawaban utama.
+Bagian `evidence`, `sources`, `recommended_actions`, `uncertainty`, dan
+`dimensions` ditampilkan secara bertingkat ketika pengguna membuka detail.
+
+Jika nanti memakai FastAPI aplikasi terpisah, backend aplikasi boleh membungkus
+hasil WaspadAI dengan metadata history:
 
 ```json
 {
@@ -164,45 +274,7 @@ Backend aplikasi membungkus hasil WaspadAI dengan metadata history:
   },
   "result": {
     "verdict": "UNVERIFIED",
-    "risk_level": "MEDIUM",
-    "headline": "Bukti belum cukup untuk memastikan klaim",
-    "evidence_sufficiency": 0.42,
-    "evidence_sufficiency_label": "Bukti belum cukup untuk memastikan klaim",
-    "requires_human_review": true,
-    "narrative": {
-      "text": "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim. Periksa kembali sumber resmi sebelum menindaklanjutinya.",
-      "summary": "Bukti belum cukup untuk memastikan klaim",
-      "paragraphs": [
-        "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim.",
-        "Periksa kembali sumber resmi sebelum menindaklanjutinya."
-      ]
-    },
-    "what_checked": [
-      "Klaim utama pada pesan",
-      "Kecocokan dengan sumber yang ditemukan"
-    ],
-    "why": [
-      "Bukti yang ditemukan belum mencakup seluruh klaim material."
-    ],
-    "evidence": [],
-    "sources": [],
-    "recommended_actions": [
-      {
-        "code": "RETURN_UNVERIFIED",
-        "title": "Tunggu bukti yang lebih kuat",
-        "detail": "Jangan jadikan informasi ini satu-satunya dasar keputusan."
-      }
-    ],
-    "uncertainty": "Masih diperlukan sumber primer atau sumber tepercaya lain.",
-    "dimensions": {
-      "factual_status": "UNVERIFIED",
-      "source_authenticity": "UNVERIFIED",
-      "sender_identity": "UNVERIFIED",
-      "channel_status": "UNVERIFIED",
-      "scam_risk": "MEDIUM",
-      "content_authenticity": "NOT_APPLICABLE"
-    },
-    "disclaimer": "Fact-check adalah dukungan keputusan, bukan jaminan."
+    "headline": "Bukti belum cukup untuk memastikan klaim"
   }
 }
 ```
@@ -227,11 +299,13 @@ Jika hasil sudah cukup tegas dan tidak memerlukan review:
 }
 ```
 
-Android harus memakai `result.narrative.text` sebagai jawaban utama. Bagian
-`evidence`, `sources`, `recommended_actions`, `uncertainty`, dan `dimensions`
-ditampilkan secara bertingkat ketika pengguna membuka detail.
+Aturan penyimpanan ini hanya berlaku jika ada FastAPI aplikasi yang mengelola
+history. API WaspadAI pada mode MVP direct tidak menyimpan history pengguna.
 
-## 7. History
+## 7. History pada mode lanjutan
+
+Bagian ini belum disediakan oleh API WaspadAI mode demo. History dikelola oleh
+FastAPI aplikasi jika nanti arsitektur lanjutan dipakai.
 
 History hanya berisi kasus `UNVERIFIED` atau `requires_human_review=true`.
 
@@ -267,7 +341,11 @@ Pengguna dapat menghapus history selama kasus belum menjadi
 `VERIFIED_EVIDENCE`. Jika kasus sedang terlihat di komunitas, penghapusan juga
 menarik kasus dari komunitas dan menghapus file turunan yang dipublikasikan.
 
-## 8. Preview dan publikasi komunitas
+## 8. Preview dan publikasi komunitas pada mode lanjutan
+
+Bagian ini belum disediakan oleh API WaspadAI mode demo. Preview, redaksi final,
+publikasi komunitas, dan consent dikelola oleh FastAPI aplikasi jika nanti
+arsitektur lanjutan dipakai.
 
 Kasus baru selalu privat. Tidak ada publikasi otomatis.
 
@@ -321,7 +399,10 @@ DELETE /api/v1/history/{case_id}/community
 
 Pemilik dapat menarik kasus selama belum berstatus `VERIFIED_EVIDENCE`.
 
-## 9. Community feed dan voting
+## 9. Community feed dan voting pada mode lanjutan
+
+Bagian ini belum disediakan oleh API WaspadAI mode demo. Feed komunitas dan vote
+dikelola oleh FastAPI aplikasi jika nanti arsitektur lanjutan dipakai.
 
 ```http
 GET    /api/v1/community?limit=20&cursor=<opaque_cursor>
@@ -373,7 +454,23 @@ sumber dan bukti. Endpoint moderasi tidak termasuk kontrak Android.
 
 ## 10. Error envelope
 
-Semua error dari FastAPI aplikasi menggunakan bentuk yang sama:
+Pada mode MVP direct-to-WaspadAI, error mengikuti response FastAPI WaspadAI.
+Contoh error validasi:
+
+```json
+{
+  "detail": [
+    {
+      "type": "string_too_short",
+      "loc": ["body", "text"],
+      "msg": "String should have at least 10 characters"
+    }
+  ]
+}
+```
+
+Jika nanti memakai FastAPI aplikasi terpisah, backend aplikasi sebaiknya
+menyeragamkan error menjadi bentuk berikut:
 
 ```json
 {
@@ -392,7 +489,7 @@ Status dan tindakan Android:
 | HTTP | Contoh code | Tindakan client |
 | --- | --- | --- |
 | `400` | `INVALID_REQUEST` | Tampilkan kesalahan input |
-| `401` | `INVALID_ACCESS_TOKEN` | Refresh session lalu retry satu kali |
+| `401` | `INVALID_ACCESS_TOKEN` | Hanya untuk mode backend aplikasi; refresh session lalu retry satu kali |
 | `403` | `OWNER_CANNOT_VOTE`, `CASE_LOCKED` | Tampilkan alasan; jangan retry |
 | `404` | `CASE_NOT_FOUND` | Kembali ke daftar sebelumnya |
 | `409` | `PREVIEW_EXPIRED`, `CASE_ALREADY_VERIFIED` | Refresh data atau buat preview baru |
@@ -404,8 +501,8 @@ Status dan tindakan Android:
 | `503` | `SERVICE_UNAVAILABLE` | Tawarkan coba lagi nanti |
 
 Android tidak boleh menampilkan stack trace atau exception internal kepada
-pengguna. `request_id` dapat ditampilkan pada detail error untuk kebutuhan
-dukungan.
+pengguna. Pada mode direct, tampilkan pesan ramah berdasarkan HTTP status dan
+simpan detail teknis hanya untuk log/debug.
 
 ## 11. Kontrak internal backend aplikasi ke WaspadAI
 
@@ -431,15 +528,19 @@ community state, vote, dan moderasi.
 
 ## 12. Checklist implementasi Kotlin
 
-- Ambil access token dari session Supabase aktif.
-- Tambahkan Bearer token pada setiap request.
-- Jangan pernah mengirim `user_id` atau service key WaspadAI.
+- Pastikan session Supabase aktif sebelum pengguna boleh memakai fitur cek AI.
+- Untuk mode MVP direct, jangan kirim Bearer token ke WaspadAI.
+- Jangan pernah mengirim `user_id` atau service key WaspadAI dari Android.
 - Gunakan request JSON untuk teks dan multipart untuk screenshot.
+- Kirim `output_mode=BOTH` pada request teks dan screenshot.
 - Tampilkan preview/crop sebelum upload screenshot.
 - Gunakan timeout 120 detik dan satu loading state.
-- Refresh token dan retry paling banyak sekali ketika menerima `401`.
-- Gunakan `Idempotency-Key` yang sama ketika mengulang request pemeriksaan.
+- Refresh token dan retry paling banyak sekali ketika menerima `401` dari
+  backend aplikasi; pada mode direct WaspadAI, `401` tidak menjadi alur normal.
+- `Idempotency-Key` opsional pada mode direct; wajib dipertimbangkan jika nanti
+  memakai backend aplikasi.
 - Tampilkan naratif terlebih dahulu, lalu detail bertingkat.
-- Tampilkan tombol komunitas hanya jika `community_eligible=true`.
-- Wajib tampilkan preview redaksi sebelum mengirim consent komunitas.
-- Perlakukan signed URL screenshot sebagai URL sementara dan privat.
+- Pada mode direct, baca naratif dari `presentation.narrative.text`.
+- Fitur history, community, signed URL screenshot, dan vote membutuhkan backend
+  aplikasi terpisah; jangan menganggap field tersebut tersedia dari API
+  WaspadAI direct.

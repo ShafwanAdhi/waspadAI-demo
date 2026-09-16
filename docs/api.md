@@ -12,9 +12,11 @@ WaspadAI memiliki dua kelompok endpoint:
 - `/api/internal/v1/*` dipakai integrasi server-to-server dan wajib memakai `X-Waspadai-API-Key`.
 
 Kontrak untuk aplikasi Android berada di
-[`android-api-contract.md`](android-api-contract.md). Android tidak memanggil
-WaspadAI secara langsung; Android memanggil FastAPI aplikasi yang memvalidasi
-Supabase Auth, kemudian FastAPI aplikasi memanggil endpoint internal WaspadAI.
+[`android-api-contract.md`](android-api-contract.md). Untuk MVP saat ini,
+Android/Kotlin dapat memanggil endpoint publik `/api/v1/*` secara langsung
+setelah aplikasi memastikan pengguna sudah login melalui Supabase. Endpoint
+internal `/api/internal/v1/*` tetap hanya untuk integrasi server-to-server dan
+tidak boleh dipanggil dari aplikasi Android.
 
 Health check umum:
 

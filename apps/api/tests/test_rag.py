@@ -12,6 +12,7 @@ from app.schemas import (
 from app.services.evidence_store import LocalVerifiedEvidenceStore
 from app.services.input_adapters import build_text_case
 from app.services.pipeline import (
+    _enforce_community_conflict_review,
     _enforce_scam_message_decision,
     _enforce_final_decision_consistency,
     _enforce_rulebook_safety,
@@ -145,6 +146,23 @@ def test_context_evidence_cannot_inflate_sufficiency():
     context = [_evidence("context", "claim_1", "CONTEXT", "Instansi A")]
 
     assert calculate_evidence_sufficiency(context, claims) <= 0.35
+
+
+def test_community_only_decisive_evidence_is_capped_below_threshold():
+    claims = [
+        PlannedClaim(id="claim_1", text="Klaim satu", claim_type="FACTUAL", verifiable=True),
+    ]
+    evidence = [
+        _evidence("community-1", "claim_1", "REFUTES", "Komunitas WaspadAI").model_copy(
+            update={
+                "source_type": "community_verified",
+                "authority": 0.78,
+                "relevance": 0.9,
+            }
+        )
+    ]
+
+    assert calculate_evidence_sufficiency(evidence, claims) <= 0.57
 
 
 def test_multiple_reviewed_search_results_can_establish_evidence_coverage():
@@ -499,6 +517,46 @@ def test_low_sufficiency_forces_non_final_factual_decision():
     assert decision.headline == "Bukti belum cukup untuk memastikan klaim"
     assert decision.claims[0].verdict == "UNVERIFIED"
     assert decision.recommended_actions[0].code == "RETURN_UNVERIFIED"
+
+
+def test_community_conflict_with_strong_non_community_evidence_requires_review():
+    decision = VerificationDecision(
+        claims=[
+            {
+                "claim_id": "claim_1",
+                "verdict": "SUPPORTED",
+                "supporting_evidence": ["official"],
+                "refuting_evidence": [],
+                "contradiction_level": "NONE",
+                "reason": "Bukti mendukung klaim.",
+            }
+        ],
+        overall_verdict="SUPPORTED",
+        risk_level="LOW",
+        evidence_sufficiency=0.8,
+        requires_human_review=False,
+        headline="Klaim didukung",
+        what_checked=["Klaim satu"],
+        why=["Bukti mendukung klaim."],
+        recommended_actions=[],
+        uncertainty="",
+    )
+    evidence = [
+        _evidence("official", "claim_1", "SUPPORTS", "Instansi A"),
+        _evidence("community", "claim_1", "REFUTES", "Komunitas WaspadAI").model_copy(
+            update={
+                "source_type": "community_verified",
+                "authority": 0.78,
+                "relevance": 0.9,
+            }
+        ),
+    ]
+
+    _enforce_community_conflict_review(decision, evidence)
+
+    assert decision.overall_verdict == "UNVERIFIED"
+    assert decision.requires_human_review is True
+    assert decision.claims[0].contradiction_level == "HIGH"
 
 
 def test_mixed_evidence_normalization_requires_sufficient_final_claims():

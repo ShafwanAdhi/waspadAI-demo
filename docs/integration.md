@@ -29,6 +29,12 @@ menjalankan satu pipeline verifikasi yang sama, lalu menambahkan presentasi
 naratif secara lokal dari hasil kanonik; toggle poin-poin/naratif di browser
 tidak memicu request baru dan tidak menambah panggilan Groq.
 
+Integrasi aplikasi production dapat mengirim community evidence hanya melalui
+endpoint internal `/api/internal/v1/*`. Website demo tidak mengirim field ini.
+WaspadAI memperlakukan data community sebagai evidence sementara per-request:
+tidak ada akses database, tidak ada storage permanen, dan tidak ada panggilan
+Groq tambahan.
+
 ## Susunan hasil bertingkat
 
 Urutan publik sengaja berbeda dari urutan internal pipeline:
@@ -45,6 +51,11 @@ Urutan publik sengaja berbeda dari urutan internal pipeline:
 10. **Disclaimer, privasi, dan request ID** — konteks audit ringan di bagian akhir.
 
 `rulebook`, `pipeline`, detail model, dan trace tidak ditampilkan di hasil publik. Semua itu tetap tersedia di `/debug` pada development agar tuning tidak membebani atau membingungkan pengguna. `community_status` juga belum ditampilkan sampai alur consent dan review komunitas benar-benar tersedia.
+
+Evidence dengan `source_type=community_verified` boleh tampil di daftar bukti
+sebagai konteks komunitas terverifikasi. Namun, jika hanya community evidence
+yang tersedia, backend tetap konservatif dan tidak mengunci verdict final tanpa
+dukungan bukti non-community yang memadai.
 
 Mode naratif menampilkan paragraf ringkas dari `presentation.narrative`, tetapi
 tetap mempertahankan sumber utama agar pengguna masih bisa memeriksa asal bukti.

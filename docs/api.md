@@ -13,10 +13,9 @@ WaspadAI memiliki dua kelompok endpoint:
 
 Kontrak untuk aplikasi Android berada di
 [`android-api-contract.md`](android-api-contract.md). Untuk MVP saat ini,
-Android/Kotlin dapat memanggil endpoint publik `/api/v1/*` secara langsung
-setelah aplikasi memastikan pengguna sudah login melalui Supabase. Endpoint
-internal `/api/internal/v1/*` tetap hanya untuk integrasi server-to-server dan
-tidak boleh dipanggil dari aplikasi Android.
+Android/Kotlin memanggil Product Backend aplikasi, bukan WaspadAI langsung.
+Product Backend memvalidasi login Supabase, mengelola database/history/community,
+lalu memanggil endpoint internal WaspadAI secara server-to-server.
 
 Health check umum:
 
@@ -104,6 +103,7 @@ curl -X POST "https://waspadai.shafwan.digital/api/internal/v1/verify/text" \
     "question": "Apakah isi teks ini benar dan aman ditindaklanjuti?",
     "sender_context": "UNKNOWN_NUMBER",
     "output_mode": "BOTH",
+    "community_evidence": [],
     "page_context": {
       "title": "Contoh halaman",
       "before": "Konteks sebelum teks pilihan.",
@@ -119,8 +119,38 @@ curl -X POST "https://waspadai.shafwan.digital/api/internal/v1/verify/image" \
   -H "X-Waspadai-API-Key: key_project_pertama" \
   -F "image=@contoh.png" \
   -F "question=Tolong cek apakah pesan pada gambar ini penipuan atau bukan" \
-  -F "output_mode=BOTH"
+  -F "output_mode=BOTH" \
+  -F "community_evidence_json=[]"
 ```
+
+## Community evidence internal
+
+`community_evidence` hanya diterima pada endpoint internal. WaspadAI tidak
+mengakses database, Supabase, Storage, history, vote, atau moderation log milik
+aplikasi lain. Product Backend harus memilih record community yang eligible,
+membersihkan PII, lalu mengirim DTO final yang sudah sanitized.
+
+Pada request teks, kirim field JSON `community_evidence`. Pada request gambar,
+kirim field multipart `community_evidence_json` berisi JSON array yang sama.
+Jika tidak ada record eligible, kirim array kosong.
+
+Ringkasan batas:
+
+| Field | Aturan |
+| --- | --- |
+| Record per request | Maksimal 5 |
+| Source per record | 1 sampai 3 sumber publik |
+| Total payload community | Maksimal 30 KB |
+| `redacted_text` | Opsional, maksimal 4.000 karakter |
+| `status` | Wajib `VERIFIED_EVIDENCE` |
+| `stance` | `SUPPORTS`, `REFUTES`, atau `CONTEXT` |
+
+Community evidence dipakai sebagai request-scoped evidence pada pipeline yang
+sama. Ia tidak menambah panggilan Groq baru dan tidak disimpan sebagai corpus RAG
+permanen. Agar tidak menggelembungkan keputusan, evidence yang seluruhnya hanya
+berasal dari community tetap dibatasi di bawah threshold verdict final; community
+baru dapat membantu keputusan decisive jika selaras dengan bukti non-community
+yang relevan.
 
 ## Field response penting
 

@@ -1,24 +1,47 @@
 # Kontrak API Android WaspadAI
 
-Status dokumen: kontrak integrasi MVP untuk aplikasi Android/Kotlin yang memakai
-API AI WaspadAI pada repository ini.
+Status dokumen: **MUTLAK v1.0** untuk integrasi Android/Kotlin melalui Product
+API milik aplikasi mobile menuju service AI WaspadAI.
 
-Keputusan integrasi saat ini: aplikasi Android boleh memanggil endpoint publik
-WaspadAI secara langsung setelah pengguna login di aplikasi. Login Supabase
-dipakai oleh aplikasi Android untuk mengontrol akses fitur, tetapi token
-Supabase tidak divalidasi oleh API WaspadAI pada mode demo ini.
+Dokumen ini adalah sumber kontrak utama untuk tim Android dan backend aplikasi
+mobile. Jika implementasi belum memiliki endpoint tertentu, statusnya ditandai
+sebagai `TARGET`; kontrak tetap menjadi arah implementasi yang harus diikuti.
 
-## 1. Batas sistem
+## 1. Keputusan Arsitektur Final
 
-Mode MVP yang dipakai sekarang:
+Android tidak memanggil WaspadAI secara langsung.
+
+Jalur yang berlaku:
 
 ```text
-Android Kotlin -> Public WaspadAI API -> pipeline fact-check
-        |
-        +-- Supabase login diperiksa di aplikasi Android
+Android Kotlin
+  -> FastAPI aplikasi mobile / Product Backend
+  -> Database Product, Supabase Auth, Storage, Community
+  -> Internal API WaspadAI
+  -> Pipeline fact-check WaspadAI
 ```
 
-Pada mode ini, Android memakai endpoint publik WaspadAI:
+Tanggung jawab tiap sistem:
+
+| Sistem | Tanggung jawab |
+| --- | --- |
+| Android | Mengirim input pengguna, Supabase access token, dan menampilkan hasil. |
+| Product Backend | Validasi login, history, screenshot storage, community, vote, moderasi, dan pemilihan community evidence. |
+| WaspadAI | Menjalankan pipeline fact-check dan mengembalikan hasil AI. |
+| Database Product | Menjadi sumber state history, community, consent, vote, dan moderasi. |
+
+Aturan yang tidak boleh dilanggar:
+
+- Android hanya memanggil Product Backend.
+- Android tidak pernah menyimpan atau mengirim `X-Waspadai-API-Key`.
+- WaspadAI tidak menerima Supabase access token.
+- WaspadAI tidak mengakses Supabase Database, Supabase Storage, atau database
+  aplikasi mobile.
+- WaspadAI tidak menyimpan history pengguna.
+- Community evidence dikirim ke WaspadAI hanya sebagai payload sanitized dari
+  Product Backend.
+
+Endpoint publik WaspadAI tetap ada untuk website demo dan pengujian manual:
 
 ```text
 GET  https://waspadai.shafwan.digital/api/health
@@ -26,101 +49,80 @@ POST https://waspadai.shafwan.digital/api/v1/verify/text
 POST https://waspadai.shafwan.digital/api/v1/verify/image
 ```
 
-Android tidak boleh memanggil endpoint internal WaspadAI:
+Endpoint internal WaspadAI hanya boleh dipanggil server:
 
 ```text
 POST https://waspadai.shafwan.digital/api/internal/v1/verify/text
 POST https://waspadai.shafwan.digital/api/internal/v1/verify/image
 ```
 
-Endpoint internal membutuhkan `X-Waspadai-API-Key`. Secret itu hanya boleh
-disimpan di server, bukan di aplikasi Android, karena APK dapat dibongkar.
+## 2. Base URL Android
 
-Mode lanjutan yang dapat dipakai nanti:
-
-```text
-Android -> FastAPI aplikasi -> FastAPI WaspadAI -> pipeline fact-check
-             |                    |
-             |                    +-- stateless; tanpa akun dan history
-             +-- Supabase Auth, history, Storage, komunitas, dan voting
-```
-
-Mode lanjutan diperlukan jika history, Storage, komunitas, voting, ownership,
-dan moderasi ingin dikelola secara server-side. Pada mode itu Android memanggil
-FastAPI aplikasi, sedangkan FastAPI aplikasi memanggil endpoint internal
-WaspadAI menggunakan `X-Waspadai-API-Key`.
-
-## 2. Base URL dan autentikasi
-
-Base URL AI WaspadAI yang dipakai Android pada mode MVP:
+Android memakai base URL Product Backend aplikasi mobile:
 
 ```text
-https://waspadai.shafwan.digital
+https://<api-aplikasi-mobile>
 ```
 
-Endpoint verifikasi yang dipakai Android:
+Android tidak memakai base URL `https://waspadai.shafwan.digital` untuk mode
+production aplikasi mobile. Domain WaspadAI hanya dipakai oleh Product Backend.
 
-```text
-POST /api/v1/verify/text
-POST /api/v1/verify/image
-```
+## 3. Autentikasi Android
 
-Sebelum memanggil endpoint tersebut, aplikasi Android harus memastikan pengguna
-sudah login melalui Supabase. API WaspadAI mode demo tidak menerima dan tidak
-memvalidasi header `Authorization`.
-
-Jika nanti memakai FastAPI aplikasi terpisah, barulah setiap request Android
-wajib mengirim access token sesi Supabase:
+Semua endpoint Product API yang dipakai Android wajib menerima:
 
 ```http
 Authorization: Bearer <supabase_access_token>
 Accept: application/json
 ```
 
-Pada mode lanjutan tersebut, FastAPI aplikasi harus:
+Product Backend wajib:
 
-1. mengambil Bearer token dari header `Authorization`;
-2. memvalidasi token melalui `supabase.auth.get_user(access_token)` pada MVP;
-3. menolak token tidak valid atau kedaluwarsa dengan HTTP `401`;
-4. mengambil `sub` token sebagai `user_id` terpercaya;
-5. menggunakan `user_id` tersebut untuk semua operasi history, Storage, vote,
-   dan kepemilikan kasus.
+1. mengambil bearer token dari header `Authorization`;
+2. memvalidasi token dengan `supabase.auth.get_user(access_token)` pada MVP;
+3. menolak token invalid atau expired dengan HTTP `401`;
+4. mengambil `sub` sebagai `user_id` terpercaya;
+5. memakai `user_id` untuk history, Storage, community, vote, dan ownership.
 
-Android tidak mengirim refresh token ke API aplikasi. Jika menerima `401` dari
-FastAPI aplikasi, Android meminta Supabase SDK memperbarui session lalu
-mengulang request paling banyak satu kali.
+Android tidak mengirim refresh token ke Product Backend. Jika menerima `401`,
+Android meminta Supabase SDK refresh session lalu retry request yang sama paling
+banyak satu kali.
 
-Untuk request pemeriksaan, Android sebaiknya mengirim UUID yang tetap sama saat
-mengulang aksi yang sama:
+Untuk request pemeriksaan, Android wajib mengirim:
 
 ```http
 Idempotency-Key: <uuid-v4>
 ```
 
-Pada mode MVP direct-to-WaspadAI, header ini belum diproses oleh WaspadAI dan
-bersifat opsional. Pada mode lanjutan, header ini mencegah retry jaringan
-menjalankan pipeline AI dua kali; backend aplikasi dapat menyimpan pasangan
-`user_id + Idempotency-Key` secara singkat, misalnya 10 menit.
+Product Backend memakai kombinasi `user_id + Idempotency-Key` untuk mencegah
+pipeline AI berjalan dua kali akibat retry jaringan.
 
-## 3. Karakteristik pemeriksaan
+## 4. Karakteristik Pemeriksaan
 
-- Pemeriksaan bersifat synchronous: satu request menghasilkan satu respons.
-- Timeout client yang disarankan adalah 120 detik.
-- Chat bukan percakapan multi-turn; setiap pesan adalah pemeriksaan baru.
-- Naratif menjadi tampilan utama.
-- Bukti, sumber, tindakan, dan detail tetap dikirim sebagai data terstruktur
-  untuk bagian UI yang dapat dibuka.
-- Pada mode MVP, Android sebaiknya mengirim `output_mode=BOTH` agar mendapatkan
-  hasil naratif dan data terstruktur dalam satu request.
-- Pada mode lanjutan, backend aplikasi dapat selalu meminta `output_mode=BOTH`
-  kepada WaspadAI sehingga Android tidak perlu mengelola mode output.
+- Pemeriksaan bersifat synchronous.
+- Satu request menghasilkan satu respons.
+- Chatbot MVP bukan percakapan multi-turn; setiap pesan adalah pemeriksaan baru.
+- Timeout Android untuk pemeriksaan AI: 150 detik.
+- Deadline Product Backend ketika memanggil WaspadAI: 120 detik.
+- Android tidak mengirim `output_mode`.
+- Product Backend selalu meminta `output_mode=BOTH` ke WaspadAI.
+- Naratif adalah tampilan utama.
+- Bukti, sumber, tindakan, dimensi, dan detail lain ditampilkan bertingkat.
 
-## 4. Pemeriksaan teks
+## 5. Product API Untuk Android
+
+### 5.1 Pemeriksaan Teks
 
 ```http
-POST /api/v1/verify/text
+POST /api/v1/verifications/text
+Authorization: Bearer <supabase_access_token>
+Idempotency-Key: <uuid-v4>
 Content-Type: application/json
 ```
+
+Status implementasi: endpoint text vertical slice sudah tersedia pada Product
+Backend, tetapi remote call ke WaspadAI mengikuti kesiapan repository aplikasi
+mobile.
 
 Request:
 
@@ -130,19 +132,23 @@ Request:
   "question": "Apakah pesan ini aman?",
   "source_url": null,
   "sender_context": "UNKNOWN_NUMBER",
-  "output_mode": "BOTH"
+  "page_context": {
+    "title": "Chat dari nomor tidak dikenal",
+    "before": null,
+    "after": null
+  }
 }
 ```
 
-Field:
+Aturan field:
 
 | Field | Wajib | Aturan |
 | --- | --- | --- |
-| `text` | Ya | 10-25.000 karakter setelah trim |
-| `question` | Tidak | Maksimal 500 karakter; backend memakai pertanyaan default jika kosong |
-| `source_url` | Tidak | URL publik maksimal 2.048 karakter |
-| `sender_context` | Tidak | Default `UNKNOWN` |
-| `output_mode` | Tidak | Gunakan `BOTH` agar response berisi naratif dan data terstruktur |
+| `text` | Ya | 10 sampai 25.000 karakter setelah trim. |
+| `question` | Tidak | Maksimal 500 karakter; backend memakai pertanyaan default jika kosong. |
+| `source_url` | Tidak | URL publik HTTP(S), maksimal 2.048 karakter. |
+| `sender_context` | Tidak | Default `UNKNOWN`. |
+| `page_context` | Tidak | Object opsional; minimal satu field berisi nilai jika dikirim. |
 
 Nilai `sender_context`:
 
@@ -155,173 +161,206 @@ SOCIAL_MEDIA
 UNKNOWN
 ```
 
-Teks yang hanya berisi satu URL publik tetap valid. URL localhost, loopback,
-private IP, dan URL internal harus ditolak.
+Aturan `page_context`:
 
-## 5. Pemeriksaan screenshot
+| Field | Aturan |
+| --- | --- |
+| `title` | Maksimal 300 karakter. |
+| `before` | Maksimal 500 karakter. |
+| `after` | Maksimal 500 karakter. |
+
+Teks yang hanya berisi satu URL publik tetap valid. URL `localhost`, loopback,
+private IP, file URL, dan URL internal harus ditolak oleh Product Backend.
+
+### 5.2 Pemeriksaan Screenshot
 
 ```http
-POST /api/v1/verify/image
+POST /api/v1/verifications/image
+Authorization: Bearer <supabase_access_token>
+Idempotency-Key: <uuid-v4>
 Content-Type: multipart/form-data
 ```
+
+Status implementasi: `TARGET`; belum boleh dianggap tersedia sampai Product
+Backend mengekspor endpoint, OpenAPI, test, dan deployment.
 
 Multipart fields:
 
 | Field | Wajib | Aturan |
 | --- | --- | --- |
-| `image` | Ya | File biner JPG, PNG, atau WEBP |
-| `question` | Tidak | Maksimal 500 karakter |
-| `output_mode` | Tidak | Gunakan `BOTH` agar response berisi naratif dan data terstruktur |
+| `image` | Ya | File biner JPG, PNG, atau WEBP. |
+| `question` | Tidak | Maksimal 500 karakter. |
 
 Batas gambar:
 
 | Batas | Nilai |
 | --- | --- |
-| Ukuran file | Maksimal 8 MB |
-| Dimensi minimal | 64 x 64 piksel |
-| Dimensi maksimal | 6.000 x 6.000 piksel |
-| Jumlah piksel | Maksimal 30.000.000 piksel |
-| Format | JPEG/JPG, PNG, WEBP |
+| Ukuran file | Maksimal 8 MB. |
+| Dimensi minimal | 64 x 64 piksel. |
+| Dimensi maksimal | 6.000 x 6.000 piksel. |
+| Jumlah piksel | Maksimal 30.000.000 piksel. |
+| Format | JPEG/JPG, PNG, WEBP. |
 
-Android harus menggunakan alur berikut:
+Alur Android untuk screenshot:
 
-1. mengambil screenshot melalui flow capture/overlay Android;
-2. menampilkan preview dan crop;
-3. mengirim hasil crop sebagai file multipart, bukan Base64 dalam JSON;
-4. mempertahankan layar loading sampai respons diterima atau timeout.
+1. ambil screenshot melalui capture/overlay Android;
+2. tampilkan preview dan crop;
+3. kirim hasil crop sebagai multipart binary;
+4. jangan kirim gambar sebagai Base64 JSON;
+5. pertahankan loading sampai respons diterima atau timeout.
 
-WEBP atau JPEG terkompresi disarankan untuk mengurangi waktu upload. Kompresi
-tidak boleh membuat teks pada screenshot sulit dibaca.
+## 6. Response Product API
 
-## 6. Respons pemeriksaan
+Product Backend boleh membungkus hasil WaspadAI dengan metadata history,
+community, dan execution mode.
 
-Pada mode MVP direct-to-WaspadAI, response dikembalikan langsung oleh API
-WaspadAI. Tidak ada wrapper `result` dan tidak ada metadata `history` dari API
-ini.
-
-Contoh bentuk response yang perlu dibaca Android:
+Wrapper final yang diterima Android:
 
 ```json
 {
-  "request_id": "req_01kotlinexample",
+  "request_id": "8f20b3a3-7d90-4b0a-a5ee-59b7b0a4e8b8",
   "status": "COMPLETED",
-  "mode": "LIVE",
-  "verdict": "UNVERIFIED",
-  "risk_level": "MEDIUM",
-  "headline": "Bukti belum cukup untuk memastikan klaim",
-  "evidence_sufficiency": 0.42,
-  "evidence_sufficiency_label": "Bukti belum cukup untuk memastikan klaim",
-  "requires_human_review": true,
-  "community_status": "ELIGIBLE_WITH_CONSENT",
-  "what_checked": [
-    "Klaim utama pada pesan",
-    "Kecocokan dengan sumber yang ditemukan"
-  ],
-  "why": [
-    "Bukti yang ditemukan belum mencakup seluruh klaim material."
-  ],
-  "evidence": [],
-  "sources": [],
-  "recommended_actions": [
-    {
-      "code": "RETURN_UNVERIFIED",
-      "title": "Tunggu bukti yang lebih kuat",
-      "detail": "Jangan jadikan informasi ini satu-satunya dasar keputusan."
-    }
-  ],
-  "uncertainty": "Masih diperlukan sumber primer atau sumber tepercaya lain.",
-  "dimensions": {
-    "factual_status": "UNVERIFIED",
-    "source_authenticity": "UNVERIFIED",
-    "sender_identity": "UNVERIFIED",
-    "channel_status": "UNVERIFIED",
-    "scam_risk": "MEDIUM",
-    "content_authenticity": "NOT_APPLICABLE"
-  },
-  "presentation": {
-    "requested_mode": "BOTH",
-    "structured": true,
-    "narrative": {
-      "text": "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim. Periksa kembali sumber resmi sebelum menindaklanjutinya.",
-      "summary": "Bukti belum cukup untuk memastikan klaim",
-      "paragraphs": [
-        "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim.",
-        "Periksa kembali sumber resmi sebelum menindaklanjutinya."
-      ]
-    },
-  },
-  "disclaimer": "Fact-check adalah dukungan keputusan, bukan jaminan."
-}
-```
-
-Android harus memakai `presentation.narrative.text` sebagai jawaban utama.
-Bagian `evidence`, `sources`, `recommended_actions`, `uncertainty`, dan
-`dimensions` ditampilkan secara bertingkat ketika pengguna membuka detail.
-
-Jika nanti memakai FastAPI aplikasi terpisah, backend aplikasi boleh membungkus
-hasil WaspadAI dengan metadata history:
-
-```json
-{
-  "request_id": "req_01kotlinexample",
-  "status": "COMPLETED",
+  "execution_mode": "REMOTE",
   "history": {
     "saved": true,
-    "case_id": "case_01example",
+    "case_id": "56f50192-7dd1-4bec-9a52-d838174c9d23",
     "save_reason": "UNVERIFIED",
     "community_eligible": true,
     "community_state": "PRIVATE"
   },
   "result": {
+    "request_id": "req_8f20b3a37d90",
+    "trace_id": "trace_01kotlinexample",
+    "status": "COMPLETED",
+    "mode": "LIVE",
+    "mode_notice": "Pemeriksaan dilakukan oleh pipeline WaspadAI.",
+    "input_summary": {
+      "input_type": "TEXT",
+      "content_type": "UNKNOWN_SENDER_MESSAGE",
+      "label": "Teks",
+      "media_type": null,
+      "dimensions": null,
+      "extraction_status": "parsed",
+      "excerpt": "Pesan mengaku dari bank dan meminta OTP agar akun tidak diblokir.",
+      "source_url": null,
+      "sender_context": "UNKNOWN_NUMBER",
+      "character_count": 68,
+      "urls_detected": 0,
+      "pii_types_redacted": []
+    },
     "verdict": "UNVERIFIED",
-    "headline": "Bukti belum cukup untuk memastikan klaim"
+    "risk_level": "MEDIUM",
+    "headline": "Bukti belum cukup untuk memastikan klaim",
+    "evidence_sufficiency": 0.42,
+    "evidence_sufficiency_label": "Bukti belum cukup untuk memastikan klaim",
+    "requires_human_review": true,
+    "community_status": "ELIGIBLE_WITH_CONSENT",
+    "privacy_notice": "Data ditangani sesuai kebijakan privasi WaspadAI.",
+    "what_checked": [
+      "Klaim utama pada pesan",
+      "Kecocokan dengan sumber yang ditemukan"
+    ],
+    "why": [
+      "Bukti yang ditemukan belum mencakup seluruh klaim material."
+    ],
+    "evidence": [],
+    "sources": [],
+    "recommended_actions": [
+      {
+        "code": "RETURN_UNVERIFIED",
+        "title": "Tunggu bukti yang lebih kuat",
+        "detail": "Jangan jadikan informasi ini satu-satunya dasar keputusan."
+      }
+    ],
+    "uncertainty": "Masih diperlukan sumber primer atau sumber tepercaya lain.",
+    "dimensions": {
+      "factual_status": "UNVERIFIED",
+      "source_authenticity": "UNVERIFIED",
+      "sender_identity": "UNVERIFIED",
+      "channel_status": "UNVERIFIED",
+      "scam_risk": "MEDIUM",
+      "content_authenticity": "NOT_APPLICABLE"
+    },
+    "rulebook": {
+      "corpus_versions": [],
+      "retrieval_mode": "LIVE",
+      "candidate_count": 0,
+      "selected_count": 0,
+      "forced_rule_ids": [],
+      "cache_hit": false,
+      "duration_ms": 0
+    },
+    "pipeline": [],
+    "presentation": {
+      "requested_mode": "BOTH",
+      "structured": true,
+      "narrative": {
+        "text": "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim. Periksa kembali sumber resmi sebelum menindaklanjutinya.",
+        "summary": "Bukti belum cukup untuk memastikan klaim",
+        "paragraphs": [
+          "Hasil pemeriksaan: bukti yang tersedia belum cukup untuk memastikan klaim.",
+          "Periksa kembali sumber resmi sebelum menindaklanjutinya."
+        ]
+      }
+    },
+    "disclaimer": "Fact-check adalah dukungan keputusan, bukan jaminan."
   }
 }
 ```
 
-Aturan penyimpanan:
+Aturan tampilan Android:
+
+- tampilkan `result.presentation.narrative.text` sebagai jawaban utama;
+- tampilkan `result.headline` sebagai ringkasan pendek;
+- tampilkan `result.evidence`, `result.sources`, `result.recommended_actions`,
+  `result.uncertainty`, dan `result.dimensions` secara bertingkat;
+- jangan menjadikan `risk_level` sebagai elemen utama kecuali nilainya
+  `HIGH` atau `CRITICAL`;
+- jangan menampilkan `pipeline` kepada pengguna umum kecuali mode debug aktif.
+
+ID pada wrapper Product Backend boleh UUID. ID internal WaspadAI menggunakan
+format runtime WaspadAI, misalnya `req_<12hex>` dan `trace_<id>`.
+
+## 7. Policy History
+
+History adalah milik Product Backend, bukan WaspadAI.
+
+Mode policy yang valid:
+
+| Policy | Arti |
+| --- | --- |
+| `REVIEW_REQUIRED` | Simpan hanya kasus `UNVERIFIED` atau `requires_human_review=true`. Ini policy default MVP. |
+| `ALL` | Simpan semua hasil pemeriksaan. Ini hanya boleh aktif jika UI, retensi, dan privacy policy sudah siap. |
+
+Rumus final:
 
 ```text
-saved = verdict == UNVERIFIED OR requires_human_review == true
+saved = HISTORY_POLICY == "ALL"
+     OR verdict == "UNVERIFIED"
+     OR requires_human_review == true
 ```
 
-Jika hasil sudah cukup tegas dan tidak memerlukan review:
+Jika `HISTORY_POLICY=REVIEW_REQUIRED`, maka history hanya berisi kasus
+`UNVERIFIED` atau `requires_human_review=true`.
 
-```json
-{
-  "history": {
-    "saved": false,
-    "case_id": null,
-    "save_reason": "NOT_REQUIRED",
-    "community_eligible": false,
-    "community_state": "NOT_AVAILABLE"
-  }
-}
-```
-
-Aturan penyimpanan ini hanya berlaku jika ada FastAPI aplikasi yang mengelola
-history. API WaspadAI pada mode MVP direct tidak menyimpan history pengguna.
-
-## 7. History pada mode lanjutan
-
-Bagian ini belum disediakan oleh API WaspadAI mode demo. History dikelola oleh
-FastAPI aplikasi jika nanti arsitektur lanjutan dipakai.
-
-History hanya berisi kasus `UNVERIFIED` atau `requires_human_review=true`.
+Endpoint history Product Backend:
 
 ```http
-GET /api/v1/history?limit=20&cursor=<opaque_cursor>
-GET /api/v1/history/{case_id}
+GET    /api/v1/history?limit=20&cursor=<opaque_cursor>
+GET    /api/v1/history/{case_id}
 DELETE /api/v1/history/{case_id}
 ```
 
-Daftar history mengembalikan ringkasan, bukan seluruh evidence:
+`GET` list/detail sudah tersedia sesuai implementasi Product Backend. `DELETE`
+adalah target jika belum diekspor oleh repository aplikasi mobile.
+
+Daftar history mengembalikan ringkasan:
 
 ```json
 {
   "items": [
     {
-      "case_id": "case_01example",
+      "case_id": "56f50192-7dd1-4bec-9a52-d838174c9d23",
       "input_type": "IMAGE",
       "headline": "Bukti belum cukup untuk memastikan klaim",
       "verdict": "UNVERIFIED",
@@ -334,22 +373,17 @@ Daftar history mengembalikan ringkasan, bukan seluruh evidence:
 }
 ```
 
-`GET /history/{case_id}` mengembalikan hasil lengkap dan signed URL sementara
-untuk screenshot privat. Bucket Supabase Storage tidak boleh public.
+Detail history boleh mengembalikan signed URL sementara untuk screenshot privat.
+Bucket Supabase Storage tidak boleh public.
 
-Pengguna dapat menghapus history selama kasus belum menjadi
-`VERIFIED_EVIDENCE`. Jika kasus sedang terlihat di komunitas, penghapusan juga
-menarik kasus dari komunitas dan menghapus file turunan yang dipublikasikan.
+## 8. Community Publication
 
-## 8. Preview dan publikasi komunitas pada mode lanjutan
-
-Bagian ini belum disediakan oleh API WaspadAI mode demo. Preview, redaksi final,
-publikasi komunitas, dan consent dikelola oleh FastAPI aplikasi jika nanti
-arsitektur lanjutan dipakai.
+Community publication dikelola Product Backend. WaspadAI tidak mengakses endpoint
+ini dan tidak menulis ke database community.
 
 Kasus baru selalu privat. Tidak ada publikasi otomatis.
 
-### Membuat preview redaksi
+### 8.1 Membuat Preview Redaksi
 
 ```http
 POST /api/v1/history/{case_id}/community-preview
@@ -368,30 +402,42 @@ Response:
 }
 ```
 
-Preview dibuat dari screenshot yang sebelumnya sudah di-preview/crop oleh
-pengguna. Backend melakukan redaksi PII lagi dan Android wajib menampilkan hasil
-akhir tersebut sebelum meminta konfirmasi.
+Android wajib menampilkan preview final yang sudah diredaksi sebelum meminta
+konfirmasi publikasi.
 
-### Mengonfirmasi publikasi
+### 8.2 Mengonfirmasi Publikasi
 
 ```http
 POST /api/v1/history/{case_id}/community
 Content-Type: application/json
 ```
 
+Request final:
+
 ```json
 {
   "preview_id": "preview_01example",
-  "consent": true
+  "publication_consent": true,
+  "rag_reuse_consent": true
 }
 ```
 
-`consent` harus bernilai `true`. Preview yang kedaluwarsa harus dibuat ulang.
-Komunitas hanya melihat image hasil redaksi, klaim, hasil awal AI, dan agregat
-vote. `user_id`, email, nomor telepon, serta path screenshot asli tidak pernah
-dikirim ke client komunitas.
+Makna consent:
 
-### Menarik kasus
+| Field | Makna |
+| --- | --- |
+| `publication_consent` | Pengguna setuju konten sanitized tampil di komunitas. |
+| `rag_reuse_consent` | Pengguna setuju konten sanitized dipakai ulang sebagai kandidat evidence AI setelah dimoderasi. |
+
+Kedua consent harus eksplisit dan terpisah. Publikasi komunitas tidak otomatis
+menjadi izin reuse oleh AI.
+
+Jika `publication_consent=false`, backend menolak request publikasi. Jika
+`publication_consent=true` tetapi `rag_reuse_consent=false`, post boleh tampil
+di community setelah validasi product, tetapi tidak pernah boleh dikirim ke
+WaspadAI sebagai community evidence.
+
+### 8.3 Menarik Kasus
 
 ```http
 DELETE /api/v1/history/{case_id}/community
@@ -399,10 +445,9 @@ DELETE /api/v1/history/{case_id}/community
 
 Pemilik dapat menarik kasus selama belum berstatus `VERIFIED_EVIDENCE`.
 
-## 9. Community feed dan voting pada mode lanjutan
+## 9. Community Feed Dan Voting
 
-Bagian ini belum disediakan oleh API WaspadAI mode demo. Feed komunitas dan vote
-dikelola oleh FastAPI aplikasi jika nanti arsitektur lanjutan dipakai.
+Endpoint Product Backend:
 
 ```http
 GET    /api/v1/community?limit=20&cursor=<opaque_cursor>
@@ -411,7 +456,7 @@ PUT    /api/v1/community/{case_id}/vote
 DELETE /api/v1/community/{case_id}/vote
 ```
 
-Memberikan atau mengubah vote:
+Vote request:
 
 ```json
 {
@@ -419,58 +464,30 @@ Memberikan atau mengubah vote:
 }
 ```
 
-Nilai vote yang valid hanya:
+Nilai vote valid:
 
 ```text
 DIDUKUNG
 DIBANTAH
 ```
 
-Response agregat:
-
-```json
-{
-  "case_id": "case_01example",
-  "user_vote": "DIDUKUNG",
-  "counts": {
-    "DIDUKUNG": 18,
-    "DIBANTAH": 7
-  }
-}
-```
-
 Aturan vote:
 
-- satu pengguna memiliki maksimal satu vote aktif per kasus;
-- `PUT` membuat vote atau mengganti vote lama;
-- `DELETE` membatalkan vote pengguna;
-- pemilik kasus tidak boleh memberikan vote pada kasusnya sendiri;
+- satu pengguna maksimal punya satu vote aktif per kasus;
+- `PUT` membuat atau mengganti vote;
+- `DELETE` membatalkan vote;
+- pemilik kasus tidak boleh vote pada kasus sendiri;
 - identitas voter tidak ditampilkan;
-- vote adalah sinyal komunitas, bukan verdict faktual;
-- jumlah vote tidak boleh otomatis menjadikan kasus evidence terverifikasi.
+- vote adalah opini komunitas, bukan verdict faktual;
+- jumlah vote tidak boleh otomatis membuat kasus menjadi evidence terverifikasi.
 
-Hanya moderator/admin yang dapat menetapkan `VERIFIED_EVIDENCE` setelah menilai
-sumber dan bukti. Endpoint moderasi tidak termasuk kontrak Android.
+Hanya moderator/admin yang boleh menetapkan `VERIFIED_EVIDENCE`.
 
-## 10. Error envelope
+## 10. Error Envelope
 
-Pada mode MVP direct-to-WaspadAI, error mengikuti response FastAPI WaspadAI.
-Contoh error validasi:
+Product Backend tidak boleh meneruskan exception mentah WaspadAI ke Android.
 
-```json
-{
-  "detail": [
-    {
-      "type": "string_too_short",
-      "loc": ["body", "text"],
-      "msg": "String should have at least 10 characters"
-    }
-  ]
-}
-```
-
-Jika nanti memakai FastAPI aplikasi terpisah, backend aplikasi sebaiknya
-menyeragamkan error menjadi bentuk berikut:
+Format error:
 
 ```json
 {
@@ -484,29 +501,28 @@ menyeragamkan error menjadi bentuk berikut:
 }
 ```
 
-Status dan tindakan Android:
+Mapping status:
 
-| HTTP | Contoh code | Tindakan client |
+| HTTP | Contoh code | Tindakan Android |
 | --- | --- | --- |
-| `400` | `INVALID_REQUEST` | Tampilkan kesalahan input |
-| `401` | `INVALID_ACCESS_TOKEN` | Hanya untuk mode backend aplikasi; refresh session lalu retry satu kali |
-| `403` | `OWNER_CANNOT_VOTE`, `CASE_LOCKED` | Tampilkan alasan; jangan retry |
-| `404` | `CASE_NOT_FOUND` | Kembali ke daftar sebelumnya |
-| `409` | `PREVIEW_EXPIRED`, `CASE_ALREADY_VERIFIED` | Refresh data atau buat preview baru |
-| `413` | `PAYLOAD_TOO_LARGE` | Minta pengguna mengompres/crop gambar |
-| `415` | `UNSUPPORTED_MEDIA_TYPE` | Gunakan JPG, PNG, atau WEBP |
-| `422` | `VALIDATION_ERROR` | Tampilkan pesan validasi field |
-| `429` | `RATE_LIMITED` | Tunggu `retry_after_seconds` |
-| `502` | `FACT_CHECK_UPSTREAM_FAILURE` | Tawarkan coba lagi |
-| `503` | `SERVICE_UNAVAILABLE` | Tawarkan coba lagi nanti |
+| `400` | `INVALID_REQUEST` | Tampilkan kesalahan input. |
+| `401` | `INVALID_ACCESS_TOKEN` | Refresh session lalu retry satu kali. |
+| `403` | `OWNER_CANNOT_VOTE`, `CASE_LOCKED` | Tampilkan alasan; jangan retry. |
+| `404` | `CASE_NOT_FOUND` | Kembali ke daftar sebelumnya. |
+| `409` | `PREVIEW_EXPIRED`, `CASE_ALREADY_VERIFIED` | Refresh data atau buat preview baru. |
+| `413` | `PAYLOAD_TOO_LARGE` | Minta pengguna crop/kompres gambar. |
+| `415` | `UNSUPPORTED_MEDIA_TYPE` | Gunakan JPG, PNG, atau WEBP. |
+| `422` | `VALIDATION_ERROR` | Tampilkan pesan validasi field. |
+| `429` | `RATE_LIMITED` | Tunggu `retry_after_seconds`. |
+| `502` | `FACT_CHECK_UPSTREAM_FAILURE` | Tawarkan coba lagi. |
+| `503` | `SERVICE_UNAVAILABLE` | Tawarkan coba lagi nanti. |
 
-Android tidak boleh menampilkan stack trace atau exception internal kepada
-pengguna. Pada mode direct, tampilkan pesan ramah berdasarkan HTTP status dan
-simpan detail teknis hanya untuk log/debug.
+Android tidak boleh menampilkan stack trace, exception name, atau detail teknis
+mentah kepada pengguna umum.
 
-## 11. Kontrak internal backend aplikasi ke WaspadAI
+## 11. Internal Product Backend -> WaspadAI
 
-Bagian ini untuk tim backend, bukan tim Android.
+Bagian ini untuk backend aplikasi mobile, bukan Android.
 
 ```http
 POST /api/internal/v1/verify/text
@@ -514,33 +530,243 @@ POST /api/internal/v1/verify/image
 X-Waspadai-API-Key: <service_secret>
 ```
 
-Backend aplikasi harus selalu meminta `output_mode=BOTH`, memakai timeout 120
-detik, dan meneruskan file sebagai multipart tanpa Base64. Secret disimpan pada
-environment backend dan WaspadAI.
+Aturan internal:
 
-Karena kedua FastAPI berada pada VPS yang sama tetapi berbeda repository,
-hubungkan container melalui private Docker network. Endpoint internal WaspadAI
-tidak perlu dipublikasikan sebagai rute internet khusus.
+- simpan `X-Waspadai-API-Key` hanya di environment server;
+- gunakan private Docker network jika kedua service berada di VPS yang sama;
+- timeout call ke WaspadAI: 120 detik;
+- selalu kirim `output_mode=BOTH`;
+- teruskan `page_context` dari Product API jika ada;
+- image dikirim sebagai multipart binary, bukan Base64;
+- WaspadAI tidak menerima Supabase token dan tidak menyimpan history.
 
-WaspadAI tidak memvalidasi Supabase token dan tidak menyimpan history. FastAPI
-aplikasi adalah pemilik autentikasi, `user_id`, Supabase Database, Storage,
-community state, vote, dan moderasi.
+### 11.1 Request Internal Teks
 
-## 12. Checklist implementasi Kotlin
+Status: implemented di WaspadAI. Field `community_evidence` hanya diterima di
+endpoint internal dan ditolak oleh endpoint publik.
 
-- Pastikan session Supabase aktif sebelum pengguna boleh memakai fitur cek AI.
-- Untuk mode MVP direct, jangan kirim Bearer token ke WaspadAI.
-- Jangan pernah mengirim `user_id` atau service key WaspadAI dari Android.
-- Gunakan request JSON untuk teks dan multipart untuk screenshot.
-- Kirim `output_mode=BOTH` pada request teks dan screenshot.
+```http
+POST /api/internal/v1/verify/text
+X-Waspadai-API-Key: <service_secret>
+Content-Type: application/json
+```
+
+```json
+{
+  "text": "Pesan mengaku dari bank dan meminta OTP agar akun tidak diblokir.",
+  "question": "Apakah pesan ini aman?",
+  "source_url": null,
+  "sender_context": "UNKNOWN_NUMBER",
+  "page_context": {
+    "title": "Chat dari nomor tidak dikenal",
+    "before": null,
+    "after": null
+  },
+  "output_mode": "BOTH",
+  "community_evidence": []
+}
+```
+
+### 11.2 Request Internal Image
+
+Status: implemented di WaspadAI. Field `community_evidence_json` hanya diterima
+di endpoint internal image multipart dan ditolak oleh endpoint publik.
+
+```text
+image=<file biner>
+question=<teks pertanyaan>
+output_mode=BOTH
+community_evidence_json=<JSON array dari Community Evidence DTO>
+```
+
+`community_evidence_json` memakai schema yang sama dengan
+`community_evidence`.
+
+## 12. Community Evidence DTO
+
+Community evidence tidak dibuat oleh Android. Product Backend mengambil data
+dari Database Product, memvalidasi eligibility, lalu mengirim DTO sanitized ke
+WaspadAI.
+
+Jumlah maksimum final:
+
+| Batas | Nilai |
+| --- | --- |
+| Record per request | Maksimal 5. |
+| Source per record | Maksimal 3. |
+| `redacted_text` per record | Maksimal 4.000 karakter saat dikirim ke WaspadAI. |
+| Total serialized `community_evidence` | Maksimal 30 KB. |
+| Overflow behavior | Potong berdasarkan ranking relevansi; jangan kirim payload melebihi limit. |
+
+DTO final:
+
+```json
+{
+  "schema_version": "1.0",
+  "record_type": "COMMUNITY_VERIFIED_EVIDENCE",
+  "community_post_id": "9bf23d78-5a46-4e37-a7ce-4ed22b0aac5d",
+  "case_id": "56f50192-7dd1-4bec-9a52-d838174c9d23",
+  "revision": 3,
+  "content_hash": "7b0cf4b662bec1b2f6abdb3c1d86a45c397312594070bf74b5409b5c37e3d721",
+  "status": "VERIFIED_EVIDENCE",
+  "title": "Klaim bantuan tunai melalui tautan tidak resmi",
+  "verified_claim": "Tautan pada pesan bantuan tunai tersebut bukan kanal resmi program pemerintah.",
+  "stance": "REFUTES",
+  "evidence_summary": "Moderator memverifikasi sumber resmi yang menyatakan program bantuan hanya diumumkan melalui kanal pemerintah, bukan melalui tautan pada pesan tersebut.",
+  "redacted_text": "Pesan menawarkan bantuan tunai melalui tautan tidak resmi.",
+  "published_at": "2026-09-15T10:00:00Z",
+  "verified_at": "2026-09-15T12:30:00Z",
+  "sources": [
+    {
+      "url": "https://example.go.id/klarifikasi-bantuan",
+      "title": "Klarifikasi program bantuan",
+      "publisher": "Instansi resmi",
+      "published_at": "2026-09-15T09:00:00Z"
+    }
+  ]
+}
+```
+
+Field wajib:
+
+| Field | Aturan |
+| --- | --- |
+| `schema_version` | Wajib `1.0`. |
+| `record_type` | Wajib `COMMUNITY_VERIFIED_EVIDENCE`. |
+| `community_post_id`, `case_id` | UUID. |
+| `revision` | Integer positif; harus revisi terbaru. |
+| `content_hash` | SHA-256 lowercase 64 karakter untuk konten sanitized. |
+| `status` | Wajib `VERIFIED_EVIDENCE`. |
+| `title` | 1 sampai 200 karakter. |
+| `verified_claim` | Klaim faktual yang diverifikasi moderator, 1 sampai 500 karakter. |
+| `stance` | Salah satu `SUPPORTS`, `REFUTES`, atau `CONTEXT`. |
+| `evidence_summary` | Ringkasan alasan moderasi yang sanitized, 1 sampai 800 karakter. |
+| `redacted_text` | Konten sanitized, 1 sampai 4.000 karakter saat dikirim ke WaspadAI. |
+| `published_at`, `verified_at` | RFC 3339 UTC. |
+| `sources` | 1 sampai 3 sumber publik yang direview moderator. |
+
+Field `sources[]`:
+
+| Field | Aturan |
+| --- | --- |
+| `url` | URL HTTP(S) publik, maksimal 2.048 karakter. |
+| `title` | Wajib, 1 sampai 200 karakter. |
+| `publisher` | Opsional, maksimal 160 karakter. |
+| `published_at` | Opsional, RFC 3339 UTC jika diketahui. |
+
+Makna `stance`:
+
+| Nilai | Arti |
+| --- | --- |
+| `SUPPORTS` | Evidence community mendukung klaim yang sedang diperiksa. |
+| `REFUTES` | Evidence community membantah klaim yang sedang diperiksa. |
+| `CONTEXT` | Evidence community memberi konteks relevan, tetapi tidak cukup untuk mendukung atau membantah langsung. |
+
+Jika Product Backend tidak dapat menentukan `stance`, record tidak boleh
+dikirim sebagai evidence decisive. Gunakan `CONTEXT` hanya jika moderator memang
+menetapkannya sebagai konteks relevan.
+
+## 13. Eligibility Community Evidence
+
+Product Backend hanya boleh mengirim record yang lulus semua gate berikut dalam
+satu snapshot database yang konsisten:
+
+1. `community_posts.status = 'VERIFIED_EVIDENCE'`;
+2. `community_posts.withdrawn_at IS NULL`;
+3. `community_posts.verified_at IS NOT NULL`;
+4. parent `verification_cases.community_state = 'VERIFIED_EVIDENCE'`;
+5. `verification_cases.deleted_at IS NULL`;
+6. `verification_cases.retention_expires_at > now()`;
+7. `verification_contribution_id` tidak `null`;
+8. contribution berstatus `VERIFIED`;
+9. `contributions.verified_at IS NOT NULL`;
+10. `contributions.retracted_at IS NULL`;
+11. keputusan moderasi efektif terbaru memiliki `action = 'VERIFY'`;
+12. keputusan moderasi efektif terbaru memiliki `new_status = 'VERIFIED'`;
+13. keputusan moderasi efektif terbaru memiliki `allow_rag = true`;
+14. keputusan tersebut berlaku untuk revision/content yang sedang diproyeksikan;
+15. consent aktif `COMMUNITY_PUBLICATION` tersedia;
+16. consent aktif `RAG_REUSE` tersedia;
+17. kedua consent dimiliki owner post dan mengarah ke case/contribution/preview
+    yang menghasilkan post;
+18. `content_hash` consent cocok dengan `community_posts.content_hash`;
+19. consent belum dicabut dan belum expired;
+20. `revision` adalah revisi terbaru;
+21. `content_hash` cocok dengan konten sanitized yang dikirim;
+22. minimal satu source yang dikirim tercantum dalam evidence moderasi efektif;
+23. payload tidak mengandung PII, signed URL privat, path Storage, atau data raw.
+
+Jika satu gate tidak dapat dipastikan, default-nya adalah exclude.
+
+`PUBLISHED_UNVERIFIED` boleh tampil di feed Product, tetapi tidak boleh dikirim
+ke WaspadAI sebagai factual evidence. Vote, jumlah vote, dan verdict AI lama
+tidak boleh dipakai sebagai evidence.
+
+## 14. Data Yang Dilarang Dikirim Ke WaspadAI
+
+Product Backend tidak boleh mengirim:
+
+- row database mentah atau hasil `SELECT *`;
+- `owner_id`, `user_id`, email, nomor telepon, identitas moderator, atau
+  identitas voter;
+- consent ID, isi audit consent, atau metadata internal consent;
+- vote, jumlah vote, atau rasio vote;
+- screenshot asli, path Storage privat, bucket, object path, atau signed URL
+  privat;
+- hasil/verdict AI lama sebagai evidence;
+- post `PRIVATE`, `PUBLISHED_UNVERIFIED`, atau `WITHDRAWN`;
+- contribution yang belum diverifikasi atau sudah diretract;
+- moderation reason mentah, audit log, outbox payload mentah, dan credential
+  database.
+
+## 15. Status Implementasi WaspadAI
+
+Saat dokumen ini dibuat:
+
+- endpoint WaspadAI text dan image sudah ada;
+- endpoint internal WaspadAI memakai `X-Waspadai-API-Key`;
+- `output_mode=BOTH` sudah didukung;
+- `community_evidence` dan `community_evidence_json` sudah didukung pada
+  endpoint internal;
+- WaspadAI tidak mengakses database komunitas, Supabase, Storage, vote, atau
+  history; semua community evidence harus dikirim sebagai DTO sanitized dari
+  Product Backend;
+- community evidence dipakai sebagai request-scoped evidence, bukan corpus RAG
+  permanen.
+
+Penambahan community evidence tidak boleh menambah call Groq baru. Payload
+community digabungkan ke evidence yang sudah dipakai oleh verifier pada call AI
+yang sama.
+
+## 16. Checklist Kotlin
+
+- Login Supabase harus aktif sebelum fitur AI bisa dipakai.
+- Kirim Bearer token hanya ke Product Backend.
+- Jangan panggil WaspadAI langsung dari Android.
+- Jangan menyimpan service key atau `X-Waspadai-API-Key` di Android.
+- Gunakan JSON untuk teks dan multipart untuk screenshot.
+- Jangan mengirim `output_mode`.
+- Jangan menyusun `community_evidence` di Android.
 - Tampilkan preview/crop sebelum upload screenshot.
-- Gunakan timeout 120 detik dan satu loading state.
-- Refresh token dan retry paling banyak sekali ketika menerima `401` dari
-  backend aplikasi; pada mode direct WaspadAI, `401` tidak menjadi alur normal.
-- `Idempotency-Key` opsional pada mode direct; wajib dipertimbangkan jika nanti
-  memakai backend aplikasi.
-- Tampilkan naratif terlebih dahulu, lalu detail bertingkat.
-- Pada mode direct, baca naratif dari `presentation.narrative.text`.
-- Fitur history, community, signed URL screenshot, dan vote membutuhkan backend
-  aplikasi terpisah; jangan menganggap field tersebut tersedia dari API
-  WaspadAI direct.
+- Timeout pemeriksaan AI: 150 detik.
+- Retry `401` paling banyak satu kali setelah refresh session.
+- Kirim `Idempotency-Key` untuk setiap pemeriksaan.
+- Tampilkan naratif lebih dulu, lalu detail bertingkat.
+- Ambil jawaban utama dari `result.presentation.narrative.text`.
+
+## 17. Checklist Product Backend
+
+- Validasi Supabase token dan ambil `sub` sebagai `user_id`.
+- Kelola history, Storage, community, vote, consent, dan moderation di Product
+  Backend.
+- Simpan `X-Waspadai-API-Key` hanya di environment server.
+- Panggil WaspadAI melalui endpoint internal.
+- Selalu minta `output_mode=BOTH`.
+- Teruskan `page_context` jika dikirim Android.
+- Kirim image sebagai multipart binary.
+- Kirim `community_evidence=[]` jika tidak ada record eligible.
+- Terapkan semua eligibility gate sebelum mengirim community evidence.
+- Kirim hanya DTO sanitized Bagian 12.
+- Jangan gunakan vote atau hasil AI lama sebagai evidence.
+- Kirim community evidence hanya ke endpoint internal WaspadAI; endpoint publik
+  tidak menerima field tersebut.

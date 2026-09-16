@@ -2793,6 +2793,33 @@ atau menghapus kasus sebelum status tersebut. Kontrak target lengkap untuk tim
 Kotlin terdapat di `docs/android-api-contract.md`; endpoint itu harus
 diimplementasikan pada repository FastAPI aplikasi eksternal.
 
+## 75. Request-Scoped Community Evidence - IMPLEMENTED
+
+Sejak 2026-09-17, endpoint internal WaspadAI dapat menerima community evidence
+yang dikirim oleh Product Backend aplikasi. WaspadAI tidak mengambil data dari
+database komunitas, tidak menerima Supabase token, tidak membaca Storage, dan
+tidak menyentuh history, vote, consent, atau moderation log. Semua eligibility
+gate komunitas tetap menjadi tanggung jawab Product Backend.
+
+Payload community masuk setelah planner selesai membuat klaim atomik. Artinya
+planner tetap bekerja dari input pengguna, signal extraction, dan rulebook; data
+komunitas tidak boleh mengarahkan planner untuk membuat klaim baru. Setelah plan
+valid, adapter lokal memetakan maksimal 5 record community yang sudah sanitized
+ke klaim yang relevan, lalu menggabungkannya dengan web evidence dan local
+verified evidence pada evidence aggregation yang sama.
+
+Community evidence bersifat konservatif. Satu post komunitas dihitung sebagai
+satu evidence group walaupun memiliki beberapa source, `CONTEXT` tidak memenuhi
+coverage klaim, dan evidence yang seluruhnya hanya berasal dari komunitas
+dikunci di bawah threshold verdict final. Jika community evidence bertentangan
+dengan evidence non-community berotoritas tinggi, response dikunci menjadi
+`UNVERIFIED` dan `requires_human_review=true`.
+
+Perubahan ini tidak menambah call Groq. Community evidence ikut masuk ke payload
+evidence verifier yang sudah ada, tetap dibatasi oleh `max_evidence_items_for_verifier`,
+dan debug trace hanya mencatat ringkasan jumlah record/evidence tanpa menyimpan
+raw private database payload.
+
 `community_status` dari WaspadAI bernilai `ELIGIBLE_WITH_CONSENT` apabila verdict
 `UNVERIFIED` atau membutuhkan human review. WaspadAI tetap stateless dan privacy
 notice menegaskan bahwa kebijakan penyimpanan history berada pada aplikasi

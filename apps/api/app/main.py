@@ -8,9 +8,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from groq import AuthenticationError, RateLimitError
+from pydantic import TypeAdapter, ValidationError
 
 from app.config import get_settings
 from app.schemas import (
+    CommunityEvidenceRecord,
+    InternalTextVerificationRequest,
     OutputMode,
     TextVerificationRequest,
     VerificationResponse,
@@ -21,6 +24,8 @@ from app.services.pipeline import FactCheckPipeline
 
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+COMMUNITY_EVIDENCE_JSON_MAX_BYTES = 30 * 1024
+COMMUNITY_EVIDENCE_ADAPTER = TypeAdapter(list[CommunityEvidenceRecord])
 
 
 @asynccontextmanager
@@ -78,6 +83,13 @@ async def health(request: Request) -> dict:
         "architecture": "rulebook-guided-multimodal-pipeline",
         "input_types": ["IMAGE", "TEXT"],
         "output_modes": ["STRUCTURED", "NARRATIVE", "BOTH"],
+        "community_evidence": {
+            "status": "ready",
+            "accepted_on": ["/api/internal/v1/verify/text", "/api/internal/v1/verify/image"],
+            "max_records": 5,
+            "storage": "request-scoped",
+            "database_access": False,
+        },
         "planner_review": {
             "enabled": settings.planner_review_enabled,
             "model": settings.groq_escalation_model if settings.planner_review_enabled else None,
@@ -142,14 +154,24 @@ def _require_internal_api_key(
         raise HTTPException(status_code=401, detail="API key internal tidak valid.")
 
 
+async def _reject_public_community_form(request: Request) -> None:
+    form = await request.form()
+    if "community_evidence_json" in form:
+        raise HTTPException(
+            status_code=422,
+            detail="community_evidence_json hanya tersedia pada endpoint internal.",
+        )
+
+
 @app.post("/api/v1/verify/image", response_model=VerificationResponse)
 async def verify_image(
     request: Request,
+    _: Annotated[None, Depends(_reject_public_community_form)],
     image: UploadFile = File(...),
     question: str = Form("Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"),
     output_mode: OutputMode = Form("STRUCTURED"),
 ) -> VerificationResponse:
-    return await _verify_image(request, image, question, output_mode)
+    return await _verify_image(request, image, question, output_mode, [])
 
 
 @app.post("/api/internal/v1/verify/image", response_model=VerificationResponse)
@@ -159,8 +181,10 @@ async def verify_internal_image(
     image: UploadFile = File(...),
     question: str = Form("Apakah informasi dalam gambar ini benar dan aman ditindaklanjuti?"),
     output_mode: OutputMode = Form("STRUCTURED"),
+    community_evidence_json: str = Form("[]"),
 ) -> VerificationResponse:
-    return await _verify_image(request, image, question, output_mode)
+    community_evidence = _parse_community_evidence_json(community_evidence_json)
+    return await _verify_image(request, image, question, output_mode, community_evidence)
 
 
 @app.post("/api/v1/verify/text", response_model=VerificationResponse)
@@ -174,7 +198,7 @@ async def verify_text(
 @app.post("/api/internal/v1/verify/text", response_model=VerificationResponse)
 async def verify_internal_text(
     request: Request,
-    payload: TextVerificationRequest,
+    payload: InternalTextVerificationRequest,
     _: Annotated[None, Depends(_require_internal_api_key)],
 ) -> VerificationResponse:
     return await _verify_text(request, payload)
@@ -185,6 +209,7 @@ async def _verify_image(
     image: UploadFile,
     question: str,
     output_mode: OutputMode,
+    community_evidence: list[CommunityEvidenceRecord],
 ) -> VerificationResponse:
     settings = request.app.state.settings
     max_bytes = settings.max_upload_mb * 1024 * 1024
@@ -211,6 +236,7 @@ async def _verify_image(
             filename=image.filename or "gambar",
             question=question.strip(),
             output_mode=output_mode,
+            community_evidence=community_evidence,
         )
     except InvalidImageError as exc:
         request.app.state.pipeline.debug_traces.fail_active(exc)
@@ -274,6 +300,7 @@ async def _verify_text(
             sender_context=payload.sender_context,
             page_context=payload.page_context,
             output_mode=payload.output_mode,
+            community_evidence=getattr(payload, "community_evidence", []),
         )
     except InvalidTextInputError as exc:
         request.app.state.pipeline.debug_traces.fail_active(exc)
@@ -328,6 +355,19 @@ def _debug_pipeline(request: Request) -> FactCheckPipeline:
     if not settings.debug_enabled or client_host not in {"127.0.0.1", "::1", "testclient"}:
         raise HTTPException(status_code=404, detail="Rute tidak ditemukan.")
     return request.app.state.pipeline
+
+
+def _parse_community_evidence_json(value: str) -> list[CommunityEvidenceRecord]:
+    encoded = value.encode("utf-8")
+    if len(encoded) > COMMUNITY_EVIDENCE_JSON_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="community_evidence_json maksimal 30KB.")
+    try:
+        records = COMMUNITY_EVIDENCE_ADAPTER.validate_json(encoded)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+    if len(records) > 5:
+        raise HTTPException(status_code=422, detail="community_evidence maksimal 5 record.")
+    return records
 
 
 @app.exception_handler(404)

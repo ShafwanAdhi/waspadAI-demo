@@ -1,4 +1,5 @@
 import io
+from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 from PIL import Image
@@ -13,6 +14,36 @@ def png_payload(width: int = 640, height: int = 480) -> bytes:
     return buffer.getvalue()
 
 
+def community_payload() -> list[dict]:
+    now = datetime.now(timezone.utc).isoformat()
+    return [
+        {
+            "schema_version": "1.0",
+            "record_type": "COMMUNITY_VERIFIED_EVIDENCE",
+            "community_post_id": "11111111-1111-4111-8111-111111111111",
+            "case_id": "22222222-2222-4222-8222-222222222222",
+            "revision": 1,
+            "content_hash": "a" * 64,
+            "status": "VERIFIED_EVIDENCE",
+            "title": "Bantuan Rp5 juta dibantah komunitas",
+            "verified_claim": "Pemerintah memberikan bantuan Rp5 juta",
+            "stance": "REFUTES",
+            "evidence_summary": "Tidak ada program resmi bantuan Rp5 juta pada kanal pemerintah yang diperiksa komunitas.",
+            "redacted_text": "Klaim bantuan Rp5 juta beredar melalui pesan berantai.",
+            "published_at": now,
+            "verified_at": now,
+            "sources": [
+                {
+                    "title": "Rujukan publik",
+                    "url": "https://example.com/community/bantuan-rp5-juta",
+                    "publisher": "Komunitas WaspadAI",
+                    "published_at": now,
+                }
+            ],
+        }
+    ]
+
+
 def test_health_reports_production_runtime() -> None:
     with TestClient(app) as client:
         response = client.get("/api/health")
@@ -22,6 +53,8 @@ def test_health_reports_production_runtime() -> None:
         assert response.json()["rulebook_rag"]["rule_count"] >= 255
         assert response.json()["input_types"] == ["IMAGE", "TEXT"]
         assert response.json()["output_modes"] == ["STRUCTURED", "NARRATIVE", "BOTH"]
+        assert response.json()["community_evidence"]["status"] == "ready"
+        assert response.json()["community_evidence"]["database_access"] is False
         assert response.json()["debug_trace"]["enabled"] is True
 
 
@@ -257,6 +290,40 @@ def test_internal_text_verification_accepts_valid_api_key(monkeypatch) -> None:
     assert response.json()["mode"] == "LIVE"
 
 
+def test_public_text_rejects_community_evidence_payload() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/text",
+            json={
+                "text": "Pemerintah disebut memberikan bantuan Rp5 juta pada tahun 2026.",
+                "community_evidence": community_payload(),
+            },
+        )
+
+    assert response.status_code == 422
+
+
+def test_internal_text_accepts_request_scoped_community_evidence(monkeypatch) -> None:
+    monkeypatch.setenv("WASPADAI_API_KEYS", "community-secret")
+    get_settings.cache_clear()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/internal/v1/verify/text",
+            headers={"X-Waspadai-API-Key": "community-secret"},
+            json={
+                "text": "Pemerintah disebut memberikan bantuan Rp5 juta pada tahun 2026.",
+                "output_mode": "BOTH",
+                "community_evidence": community_payload(),
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert any(item["source_type"] == "community_verified" for item in body["evidence"])
+    assert body["presentation"]["requested_mode"] == "BOTH"
+
+
 def test_internal_image_verification_requires_valid_api_key(monkeypatch) -> None:
     monkeypatch.setenv("WASPADAI_API_KEYS", "image-secret")
     get_settings.cache_clear()
@@ -275,6 +342,31 @@ def test_internal_image_verification_requires_valid_api_key(monkeypatch) -> None
 
     assert rejected.status_code == 401
     assert accepted.status_code == 200
+
+
+def test_internal_image_accepts_request_scoped_community_evidence(monkeypatch) -> None:
+    import json
+
+    monkeypatch.setenv("WASPADAI_API_KEYS", "image-secret")
+    get_settings.cache_clear()
+
+    payload = community_payload()
+    payload[0]["verified_claim"] = "Informasi pada gambar uji perlu diverifikasi"
+    payload[0]["evidence_summary"] = "Komunitas telah menandai gambar uji sebagai perlu verifikasi lanjutan."
+    payload[0]["stance"] = "CONTEXT"
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/internal/v1/verify/image",
+            headers={"X-Waspadai-API-Key": "image-secret"},
+            files={"image": ("sample.png", png_payload(), "image/png")},
+            data={
+                "question": "Apakah aman?",
+                "community_evidence_json": json.dumps(payload),
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["mode"] == "LIVE"
 
 
 def test_text_input_redacts_pii_and_sanitizes_source_url() -> None:

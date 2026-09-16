@@ -13,6 +13,7 @@ from app.schemas import (
     CaseContext,
     CaseSignals,
     ClaimAssessment,
+    CommunityEvidenceRecord,
     Evidence,
     InputSummary,
     MediaMetadata,
@@ -32,6 +33,10 @@ from app.services.groq_service import (
     GroqFactCheckService,
     ModelOutputError,
     review_token_budget,
+)
+from app.services.community_evidence import (
+    community_evidence_trace,
+    community_records_to_evidence,
 )
 from app.services.debug_trace import DebugTraceStore, instruction_profile
 from app.services.evidence_store import LocalVerifiedEvidenceStore
@@ -115,6 +120,7 @@ class FactCheckPipeline:
         filename: str,
         question: str,
         output_mode: OutputMode = "STRUCTURED",
+        community_evidence: list[CommunityEvidenceRecord] | None = None,
     ) -> VerificationResponse:
         request_id = f"req_{uuid.uuid4().hex[:12]}"
         trace_id = f"trace_{uuid.uuid4().hex[:16]}"
@@ -231,6 +237,7 @@ class FactCheckPipeline:
             request_id=request_id,
             trace_id=trace_id,
             output_mode=output_mode,
+            community_records=community_evidence or [],
         )
 
     async def verify_text(
@@ -241,6 +248,7 @@ class FactCheckPipeline:
         sender_context: str,
         page_context: PageContext | None = None,
         output_mode: OutputMode = "STRUCTURED",
+        community_evidence: list[CommunityEvidenceRecord] | None = None,
     ) -> VerificationResponse:
         request_id = f"req_{uuid.uuid4().hex[:12]}"
         trace_id = f"trace_{uuid.uuid4().hex[:16]}"
@@ -304,6 +312,7 @@ class FactCheckPipeline:
             request_id=request_id,
             trace_id=trace_id,
             output_mode=output_mode,
+            community_records=community_evidence or [],
         )
 
     async def _verify_case(
@@ -314,6 +323,7 @@ class FactCheckPipeline:
         request_id: str,
         trace_id: str,
         output_mode: OutputMode,
+        community_records: list[CommunityEvidenceRecord],
     ) -> VerificationResponse:
         assert self.groq is not None
 
@@ -575,7 +585,7 @@ class FactCheckPipeline:
         )
 
         retrieval_started = time.perf_counter()
-        web_result, domain_result, community_result = await asyncio.gather(
+        web_result, domain_result = await asyncio.gather(
             _timed_external_result(self.web_search.search(planner)),
             _timed_result(
                 self.evidence_store.retrieve_domain(
@@ -583,11 +593,12 @@ class FactCheckPipeline:
                     planner.retrieval_plan.domain_rag,
                 )
             ),
-            _timed_result(self.evidence_store.retrieve_community(planner.claims)),
         )
         web_evidence, web_ms, web_error = web_result
         domain_evidence, domain_ms = domain_result
-        community_evidence, community_ms = community_result
+        community_started = time.perf_counter()
+        community_evidence = community_records_to_evidence(community_records, planner.claims)
+        community_ms = _elapsed_ms(community_started)
         search_provider = self.web_search.provider_name
         self.debug_traces.add_stage(
             trace_id,
@@ -653,14 +664,24 @@ class FactCheckPipeline:
         self.debug_traces.add_stage(
             trace_id,
             key="community_evidence",
-            label="Verified community evidence store",
+            label="Request-scoped community evidence",
             duration_ms=community_ms,
-            runtime="LOCAL_VERIFIED_STORE",
-            input_data={"claims": planner.claims},
-            output_data=community_evidence,
+            runtime="REQUEST_PAYLOAD_ADAPTER",
+            input_data={
+                "claims": planner.claims,
+                "received_records": len(community_records),
+            },
+            output_data={
+                "trace": community_evidence_trace(community_records, community_evidence),
+                "evidence": community_evidence,
+            },
             instruction={
-                "version": "community-store.v1",
-                "invariant": "Konten komunitas yang belum verified tidak dapat menjadi evidence.",
+                "version": "community-request-evidence.v1",
+                "invariants": [
+                    "WaspadAI tidak mengakses database komunitas.",
+                    "Hanya payload yang sudah disaring Product Backend yang dipakai.",
+                    "Satu post komunitas dihitung sebagai satu evidence group konservatif.",
+                ],
             },
         )
         evidence = prepare_evidence_for_decision(
@@ -758,6 +779,7 @@ class FactCheckPipeline:
             decision = _fallback_verification_decision(planner, evidence, sufficiency)
         _enforce_rulebook_safety(decision, rulebook)
         _enforce_scam_message_decision(decision, case, signals, planner)
+        _enforce_community_conflict_review(decision, evidence)
         _normalize_mixed_evidence_decision(decision, evidence, self.settings.evidence_sufficiency_threshold)
         _enforce_final_decision_consistency(
             decision,
@@ -947,6 +969,8 @@ def _remap_evidence_to_related_claims(
     output = list(evidence)
     existing = {(item.url, item.claim_id) for item in output}
     for item in evidence:
+        if item.source_type == "community_verified":
+            continue
         text = _evidence_text(item)
         for claim in claims:
             if not claim.verifiable or claim.id == item.claim_id:
@@ -1274,6 +1298,8 @@ def calculate_evidence_sufficiency(
     )
     has_refutation = any(item.stance == "REFUTES" for item in decisive)
     if coverage < 1.0 and not has_refutation:
+        score = min(score, 0.57)
+    if decisive and all(item.source_type == "community_verified" for item in decisive):
         score = min(score, 0.57)
     return round(max(0.0, min(1.0, score)), 3)
 
@@ -1648,6 +1674,60 @@ def _merge_actions(
             continue
         output.append(action)
         seen.add(action.code)
+    return output
+
+
+def _enforce_community_conflict_review(
+    decision: VerificationDecision,
+    evidence: list[Evidence],
+) -> None:
+    conflict_claims = _community_conflict_claim_ids(evidence)
+    if not conflict_claims:
+        return
+    decision.overall_verdict = "UNVERIFIED"
+    decision.requires_human_review = True
+    decision.headline = "Bukti komunitas perlu ditinjau bersama bukti lain"
+    reason = (
+        "Ada evidence komunitas terverifikasi yang bertentangan dengan evidence non-komunitas "
+        "berotoritas tinggi, sehingga sistem tidak mengunci verdict otomatis."
+    )
+    if reason not in decision.why:
+        decision.why.insert(0, reason)
+    decision.uncertainty = (
+        "Perlu review manusia untuk menilai konteks publikasi komunitas dan bukti pembanding yang lebih kuat."
+    )
+    for claim in decision.claims:
+        if claim.claim_id in conflict_claims:
+            claim.verdict = "UNVERIFIED"
+            claim.contradiction_level = "HIGH"
+            claim.reason = reason
+
+
+def _community_conflict_claim_ids(evidence: list[Evidence]) -> set[str]:
+    output: set[str] = set()
+    for claim_id in {item.claim_id for item in evidence}:
+        community_stances = {
+            item.stance
+            for item in evidence
+            if item.claim_id == claim_id
+            and item.source_type == "community_verified"
+            and item.stance in {"SUPPORTS", "REFUTES"}
+            and item.relevance >= 0.45
+        }
+        strong_non_community_stances = {
+            item.stance
+            for item in evidence
+            if item.claim_id == claim_id
+            and item.source_type != "community_verified"
+            and item.stance in {"SUPPORTS", "REFUTES"}
+            and item.relevance >= 0.65
+            and item.authority >= 0.85
+        }
+        if (
+            ("SUPPORTS" in community_stances and "REFUTES" in strong_non_community_stances)
+            or ("REFUTES" in community_stances and "SUPPORTS" in strong_non_community_stances)
+        ):
+            output.add(claim_id)
     return output
 
 

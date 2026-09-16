@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from app.config import Settings
 from app.schemas import (
+    CommunityEvidenceRecord,
     Evidence,
     PlannedClaim,
     PlannerOutput,
@@ -152,3 +153,52 @@ def test_narrative_output_mode_does_not_add_groq_calls():
     assert fake.verify_calls == 1
     assert response.presentation.requested_mode == "BOTH"
     assert response.presentation.narrative is not None
+
+
+def test_request_scoped_community_evidence_does_not_add_groq_calls():
+    pipeline = FactCheckPipeline(Settings(groq_api_key="test-key"))
+    fake = FakeGroqService()
+    pipeline.groq = fake
+    pipeline.web_search = fake
+    now = datetime.now(timezone.utc).isoformat()
+    community = [
+        CommunityEvidenceRecord(
+            schema_version="1.0",
+            record_type="COMMUNITY_VERIFIED_EVIDENCE",
+            community_post_id="11111111-1111-4111-8111-111111111111",
+            case_id="22222222-2222-4222-8222-222222222222",
+            revision=1,
+            content_hash="b" * 64,
+            status="VERIFIED_EVIDENCE",
+            title="Bantuan Rp5 juta dibantah komunitas",
+            verified_claim="Pemerintah memberikan bantuan Rp5 juta",
+            stance="REFUTES",
+            evidence_summary="Komunitas menyatakan tidak ada program resmi bantuan Rp5 juta.",
+            redacted_text="Klaim bantuan Rp5 juta beredar melalui pesan berantai.",
+            published_at=now,
+            verified_at=now,
+            sources=[
+                {
+                    "title": "Rujukan publik",
+                    "url": "https://example.com/community/bantuan-rp5-juta",
+                    "publisher": "Komunitas WaspadAI",
+                    "published_at": now,
+                }
+            ],
+        )
+    ]
+
+    response = asyncio.run(
+        pipeline.verify_text(
+            text="Pemerintah disebut memberikan bantuan Rp5 juta pada tahun 2026.",
+            question="Apakah kabar ini benar?",
+            source_url=None,
+            sender_context="FORWARDED",
+            output_mode="BOTH",
+            community_evidence=community,
+        )
+    )
+
+    assert fake.plan_calls == 1
+    assert fake.verify_calls == 1
+    assert any(item.source_type == "community_verified" for item in response.evidence)

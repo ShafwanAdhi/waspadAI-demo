@@ -185,7 +185,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TextVerificationRequest"
+                "$ref": "#/components/schemas/InternalTextVerificationRequest"
               }
             }
           }
@@ -312,7 +312,7 @@
         "properties": {
           "image": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Image"
           },
           "question": {
@@ -341,7 +341,7 @@
         "properties": {
           "image": {
             "type": "string",
-            "format": "binary",
+            "contentMediaType": "application/octet-stream",
             "title": "Image"
           },
           "question": {
@@ -358,6 +358,11 @@
             ],
             "title": "Output Mode",
             "default": "STRUCTURED"
+          },
+          "community_evidence_json": {
+            "type": "string",
+            "title": "Community Evidence Json",
+            "default": "[]"
           }
         },
         "type": "object",
@@ -365,6 +370,164 @@
           "image"
         ],
         "title": "Body_verify_internal_image_api_internal_v1_verify_image_post"
+      },
+      "CommunityEvidenceRecord": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version"
+          },
+          "record_type": {
+            "type": "string",
+            "const": "COMMUNITY_VERIFIED_EVIDENCE",
+            "title": "Record Type"
+          },
+          "community_post_id": {
+            "type": "string",
+            "title": "Community Post Id"
+          },
+          "case_id": {
+            "type": "string",
+            "title": "Case Id"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Revision"
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Content Hash"
+          },
+          "status": {
+            "type": "string",
+            "const": "VERIFIED_EVIDENCE",
+            "title": "Status"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "verified_claim": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Verified Claim"
+          },
+          "stance": {
+            "type": "string",
+            "enum": [
+              "SUPPORTS",
+              "REFUTES",
+              "CONTEXT"
+            ],
+            "title": "Stance"
+          },
+          "evidence_summary": {
+            "type": "string",
+            "maxLength": 800,
+            "minLength": 1,
+            "title": "Evidence Summary"
+          },
+          "redacted_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redacted Text"
+          },
+          "published_at": {
+            "type": "string",
+            "title": "Published At"
+          },
+          "verified_at": {
+            "type": "string",
+            "title": "Verified At"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityEvidenceSource"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "record_type",
+          "community_post_id",
+          "case_id",
+          "revision",
+          "content_hash",
+          "status",
+          "title",
+          "verified_claim",
+          "stance",
+          "evidence_summary",
+          "published_at",
+          "verified_at",
+          "sources"
+        ],
+        "title": "CommunityEvidenceRecord"
+      },
+      "CommunityEvidenceSource": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Url"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 160
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "url"
+        ],
+        "title": "CommunityEvidenceSource"
       },
       "Evidence": {
         "properties": {
@@ -586,6 +749,81 @@
           "pii_types_redacted"
         ],
         "title": "InputSummary"
+      },
+      "InternalTextVerificationRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 25000,
+            "minLength": 10,
+            "title": "Text"
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Question",
+            "default": "Apakah isi teks ini benar dan aman ditindaklanjuti?"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2048
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "sender_context": {
+            "type": "string",
+            "enum": [
+              "NOT_APPLICABLE",
+              "UNKNOWN_NUMBER",
+              "KNOWN_CONTACT",
+              "FORWARDED",
+              "SOCIAL_MEDIA",
+              "UNKNOWN"
+            ],
+            "title": "Sender Context",
+            "default": "UNKNOWN"
+          },
+          "page_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PageContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "output_mode": {
+            "type": "string",
+            "enum": [
+              "STRUCTURED",
+              "NARRATIVE",
+              "BOTH"
+            ],
+            "title": "Output Mode",
+            "default": "STRUCTURED"
+          },
+          "community_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/CommunityEvidenceRecord"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Community Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "InternalTextVerificationRequest"
       },
       "NarrativePresentation": {
         "properties": {
@@ -931,6 +1169,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

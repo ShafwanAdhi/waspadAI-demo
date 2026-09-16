@@ -1,6 +1,9 @@
+import json
+from datetime import datetime
 from typing import Literal
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 VerdictLabel = Literal[
@@ -113,6 +116,96 @@ class TextVerificationRequest(StrictModel):
     sender_context: SenderContext = "UNKNOWN"
     page_context: PageContext | None = None
     output_mode: OutputMode = "STRUCTURED"
+
+
+class CommunityEvidenceSource(StrictModel):
+    title: str = Field(min_length=1, max_length=200)
+    url: str = Field(min_length=1, max_length=2048)
+    publisher: str | None = Field(default=None, max_length=160)
+    published_at: str | None = None
+
+    @field_validator("url")
+    @classmethod
+    def must_be_public_http_url(cls, value: str) -> str:
+        parsed = urlparse(value.strip())
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("source url harus HTTP(S) publik.")
+        host = parsed.hostname or ""
+        if host in {"localhost", "127.0.0.1", "::1"} or host.startswith("10.") or host.startswith("192.168."):
+            raise ValueError("source url tidak boleh menunjuk alamat lokal/private.")
+        if host.startswith("172."):
+            parts = host.split(".")
+            if len(parts) > 1 and parts[1].isdigit() and 16 <= int(parts[1]) <= 31:
+                raise ValueError("source url tidak boleh menunjuk alamat lokal/private.")
+        return value.strip()
+
+    @field_validator("published_at")
+    @classmethod
+    def validate_optional_rfc3339(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        _parse_rfc3339(value)
+        return value
+
+
+class CommunityEvidenceRecord(StrictModel):
+    schema_version: Literal["1.0"]
+    record_type: Literal["COMMUNITY_VERIFIED_EVIDENCE"]
+    community_post_id: str
+    case_id: str
+    revision: int = Field(ge=1)
+    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    status: Literal["VERIFIED_EVIDENCE"]
+    title: str = Field(min_length=1, max_length=200)
+    verified_claim: str = Field(min_length=1, max_length=500)
+    stance: Literal["SUPPORTS", "REFUTES", "CONTEXT"]
+    evidence_summary: str = Field(min_length=1, max_length=800)
+    redacted_text: str | None = Field(default=None, max_length=4000)
+    published_at: str
+    verified_at: str
+    sources: list[CommunityEvidenceSource] = Field(min_length=1, max_length=3)
+
+    @field_validator("community_post_id", "case_id")
+    @classmethod
+    def validate_uuid_string(cls, value: str) -> str:
+        import uuid
+
+        try:
+            uuid.UUID(value)
+        except ValueError as exc:
+            raise ValueError("harus UUID valid.") from exc
+        return value
+
+    @field_validator("published_at", "verified_at")
+    @classmethod
+    def validate_required_rfc3339(cls, value: str) -> str:
+        _parse_rfc3339(value)
+        return value
+
+
+class InternalTextVerificationRequest(TextVerificationRequest):
+    community_evidence: list[CommunityEvidenceRecord] = Field(default_factory=list, max_length=5)
+
+    @model_validator(mode="after")
+    def community_payload_size_limit(self) -> "InternalTextVerificationRequest":
+        payload = json.dumps(
+            [record.model_dump(mode="json") for record in self.community_evidence],
+            ensure_ascii=False,
+        ).encode("utf-8")
+        if len(payload) > 30 * 1024:
+            raise ValueError("community_evidence maksimal 30KB.")
+        return self
+
+
+def _parse_rfc3339(value: str) -> datetime:
+    normalized = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError("timestamp harus RFC3339.") from exc
+    if parsed.tzinfo is None:
+        raise ValueError("timestamp harus memiliki timezone.")
+    return parsed
 
 
 class CaseContext(StrictModel):

@@ -1655,6 +1655,14 @@ Arsitektur inti:
 
 Dengan separation of concerns ini, Rulebook RAG menjadi **investigation policy layer**, bukan truth database. Live retrieval menyediakan fakta aktual, Evidence Aggregator menilai kualitas bukti, Claim Verifier membuat keputusan terstruktur, dan Response Generator hanya mengubah keputusan menjadi penjelasan yang aman dan mudah dipahami pengguna.
 
+Catatan implementasi MVP 2026-09-17: community evidence pada WaspadAI bukan
+database yang di-query langsung oleh service ini. Product Backend aplikasi
+memilih record community yang eligible dari database miliknya, melakukan redaksi
+PII, lalu mengirim DTO sanitized ke endpoint internal WaspadAI. Pipeline
+memperlakukan DTO tersebut sebagai request-scoped evidence setelah planner
+selesai, sehingga community data tidak menambah call Groq dan tidak menjadi
+corpus RAG permanen.
+
 ---
 
 ## 38. Debug Observability Boundary — IMPLEMENTED

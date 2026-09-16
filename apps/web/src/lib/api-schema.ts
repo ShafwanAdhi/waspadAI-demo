@@ -125,10 +125,7 @@ export interface components {
         };
         /** Body_verify_image_api_v1_verify_image_post */
         Body_verify_image_api_v1_verify_image_post: {
-            /**
-             * Image
-             * Format: binary
-             */
+            /** Image */
             image: string;
             /**
              * Question
@@ -144,10 +141,7 @@ export interface components {
         };
         /** Body_verify_internal_image_api_internal_v1_verify_image_post */
         Body_verify_internal_image_api_internal_v1_verify_image_post: {
-            /**
-             * Image
-             * Format: binary
-             */
+            /** Image */
             image: string;
             /**
              * Question
@@ -160,6 +154,67 @@ export interface components {
              * @enum {string}
              */
             output_mode: "STRUCTURED" | "NARRATIVE" | "BOTH";
+            /**
+             * Community Evidence Json
+             * @default []
+             */
+            community_evidence_json: string;
+        };
+        /** CommunityEvidenceRecord */
+        CommunityEvidenceRecord: {
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Record Type
+             * @constant
+             */
+            record_type: "COMMUNITY_VERIFIED_EVIDENCE";
+            /** Community Post Id */
+            community_post_id: string;
+            /** Case Id */
+            case_id: string;
+            /** Revision */
+            revision: number;
+            /** Content Hash */
+            content_hash: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "VERIFIED_EVIDENCE";
+            /** Title */
+            title: string;
+            /** Verified Claim */
+            verified_claim: string;
+            /**
+             * Stance
+             * @enum {string}
+             */
+            stance: "SUPPORTS" | "REFUTES" | "CONTEXT";
+            /** Evidence Summary */
+            evidence_summary: string;
+            /** Redacted Text */
+            redacted_text?: string | null;
+            /** Published At */
+            published_at: string;
+            /** Verified At */
+            verified_at: string;
+            /** Sources */
+            sources: components["schemas"]["CommunityEvidenceSource"][];
+        };
+        /** CommunityEvidenceSource */
+        CommunityEvidenceSource: {
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Publisher */
+            publisher?: string | null;
+            /** Published At */
+            published_at?: string | null;
         };
         /** Evidence */
         Evidence: {
@@ -235,6 +290,33 @@ export interface components {
             urls_detected: number;
             /** Pii Types Redacted */
             pii_types_redacted: string[];
+        };
+        /** InternalTextVerificationRequest */
+        InternalTextVerificationRequest: {
+            /** Text */
+            text: string;
+            /**
+             * Question
+             * @default Apakah isi teks ini benar dan aman ditindaklanjuti?
+             */
+            question: string;
+            /** Source Url */
+            source_url?: string | null;
+            /**
+             * Sender Context
+             * @default UNKNOWN
+             * @enum {string}
+             */
+            sender_context: "NOT_APPLICABLE" | "UNKNOWN_NUMBER" | "KNOWN_CONTACT" | "FORWARDED" | "SOCIAL_MEDIA" | "UNKNOWN";
+            page_context?: components["schemas"]["PageContext"] | null;
+            /**
+             * Output Mode
+             * @default STRUCTURED
+             * @enum {string}
+             */
+            output_mode: "STRUCTURED" | "NARRATIVE" | "BOTH";
+            /** Community Evidence */
+            community_evidence?: components["schemas"]["CommunityEvidenceRecord"][];
         };
         /** NarrativePresentation */
         NarrativePresentation: {
@@ -351,6 +433,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** VerificationResponse */
         VerificationResponse: {
@@ -559,7 +645,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TextVerificationRequest"];
+                "application/json": components["schemas"]["InternalTextVerificationRequest"];
             };
         };
         responses: {

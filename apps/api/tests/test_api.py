@@ -6,6 +6,8 @@ from PIL import Image
 
 from app.config import get_settings
 from app.main import app
+from app.schemas import ClaimAssessment, RecommendedAction, VerificationDecision, VisionClaim, VisionOutput
+from app.services.planner_guardrails import deterministic_fallback_plan
 
 
 def png_payload(width: int = 640, height: int = 480) -> bytes:
@@ -42,6 +44,98 @@ def community_payload() -> list[dict]:
             ],
         }
     ]
+
+
+class NonCheckableImageGroqService:
+    plan_calls = 0
+    verify_calls = 0
+
+    def __init__(self, settings, rate_limits=None) -> None:
+        self.settings = settings
+        self.rate_limits = rate_limits
+
+    async def understand_image(self, image_data_url, ocr, metadata, redacted_ocr_text, user_query):
+        return VisionOutput(
+            content_type="photo",
+            platform=None,
+            visual_summary="Foto pemandangan gunung tanpa teks atau konteks verifikasi.",
+            visual_entities=["gunung", "langit"],
+            possible_impersonation=False,
+            visible_urls=[],
+            claims=[],
+            vision_confidence=0.9,
+        )
+
+    async def plan(self, *args, **kwargs):
+        type(self).plan_calls += 1
+        raise AssertionError("Planner tidak boleh dipanggil untuk gambar non-checkable.")
+
+    async def review_plan(self, *args, **kwargs):
+        raise AssertionError("Planner review tidak boleh dipanggil untuk gambar non-checkable.")
+
+    async def verify_and_generate(self, *args, **kwargs):
+        type(self).verify_calls += 1
+        raise AssertionError("Verifier tidak boleh dipanggil untuk gambar non-checkable.")
+
+
+class VisualClaimImageGroqService(NonCheckableImageGroqService):
+    plan_calls = 0
+    verify_calls = 0
+
+    async def understand_image(self, image_data_url, ocr, metadata, redacted_ocr_text, user_query):
+        return VisionOutput(
+            content_type="photo",
+            platform=None,
+            visual_summary="Foto memperlihatkan poster klaim bahwa sebuah bank meminta OTP.",
+            visual_entities=["bank", "OTP"],
+            possible_impersonation=True,
+            visible_urls=[],
+            claims=[
+                VisionClaim(
+                    text="Pihak bank meminta nasabah mengirim OTP agar akun tidak diblokir.",
+                    verifiable=True,
+                )
+            ],
+            vision_confidence=0.9,
+        )
+
+    async def plan(self, case, signals, rulebook, escalation=False):
+        type(self).plan_calls += 1
+        return deterministic_fallback_plan(case, signals, rulebook, self.settings)
+
+    async def review_plan(self, case, signals, rulebook, draft, validation_issues):
+        return draft
+
+    async def verify_and_generate(self, planner, evidence, sufficiency, rulebook):
+        type(self).verify_calls += 1
+        return VerificationDecision(
+            claims=[
+                ClaimAssessment(
+                    claim_id=claim.id,
+                    verdict="UNVERIFIED",
+                    supporting_evidence=[],
+                    refuting_evidence=[],
+                    contradiction_level="NONE",
+                    reason="Keputusan uji dibuat dari pipeline normal.",
+                )
+                for claim in planner.claims
+            ],
+            overall_verdict="UNVERIFIED",
+            risk_level="LOW",
+            evidence_sufficiency=sufficiency,
+            requires_human_review=sufficiency < 0.58,
+            headline="Pemeriksaan gambar uji selesai",
+            what_checked=[claim.text for claim in planner.claims],
+            why=["Gambar memiliki klaim visual sehingga masuk pipeline normal."],
+            recommended_actions=[
+                RecommendedAction(
+                    code="VERIFY_VIA_OFFICIAL_CHANNEL",
+                    title="Periksa sumber resmi",
+                    detail="Bandingkan dengan kanal resmi terkait.",
+                )
+            ],
+            uncertainty="Ini respons deterministik untuk test.",
+        )
 
 
 def test_health_reports_production_runtime() -> None:
@@ -196,6 +290,106 @@ def test_image_verification_can_return_both_presentations() -> None:
     assert body["presentation"]["requested_mode"] == "BOTH"
     assert body["presentation"]["structured"] is True
     assert body["presentation"]["narrative"]["paragraphs"]
+
+
+def test_plain_photo_without_claim_gets_non_checkable_response(monkeypatch) -> None:
+    NonCheckableImageGroqService.plan_calls = 0
+    NonCheckableImageGroqService.verify_calls = 0
+    monkeypatch.setattr(
+        "app.services.pipeline.GroqFactCheckService",
+        NonCheckableImageGroqService,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/image",
+            files={"image": ("mountain.png", png_payload(), "image/png")},
+            data={"question": "", "output_mode": "BOTH"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["verdict"] == "UNVERIFIED"
+    assert body["risk_level"] == "LOW"
+    assert body["headline"] == "Gambar tidak memuat klaim yang bisa diperiksa"
+    assert body["evidence_sufficiency"] == 0.0
+    assert body["evidence_sufficiency_label"] == "Tidak ada klaim yang dapat diperiksa"
+    assert body["what_checked"] == ["Kelayakan gambar sebagai bahan fact-check"]
+    assert body["evidence"] == []
+    assert body["sources"] == []
+    assert body["requires_human_review"] is False
+    assert body["community_status"] == "NOT_REQUIRED"
+    assert "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa" in body["uncertainty"]
+    assert body["presentation"]["narrative"] is not None
+    assert "Gambar tidak memuat klaim" in body["presentation"]["narrative"]["text"]
+    assert [stage["key"] for stage in body["pipeline"]] == ["extraction", "image_relevance"]
+    assert NonCheckableImageGroqService.plan_calls == 0
+    assert NonCheckableImageGroqService.verify_calls == 0
+
+
+def test_internal_image_without_claim_gets_same_non_checkable_response(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("WASPADAI_API_KEYS", "image-secret")
+    get_settings.cache_clear()
+    NonCheckableImageGroqService.plan_calls = 0
+    NonCheckableImageGroqService.verify_calls = 0
+    monkeypatch.setattr(
+        "app.services.pipeline.GroqFactCheckService",
+        NonCheckableImageGroqService,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/internal/v1/verify/image",
+            headers={"X-Waspadai-API-Key": "image-secret"},
+            files={"image": ("mountain.png", png_payload(), "image/png")},
+            data={
+                "question": "",
+                "output_mode": "BOTH",
+                "community_evidence_json": "[]",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["headline"] == "Gambar tidak memuat klaim yang bisa diperiksa"
+    assert body["evidence"] == []
+    assert body["sources"] == []
+    assert body["requires_human_review"] is False
+    assert body["community_status"] == "NOT_REQUIRED"
+    assert [stage["key"] for stage in body["pipeline"]] == ["extraction", "image_relevance"]
+    assert NonCheckableImageGroqService.plan_calls == 0
+    assert NonCheckableImageGroqService.verify_calls == 0
+
+
+def test_image_with_visual_claim_still_uses_normal_pipeline(monkeypatch) -> None:
+    VisualClaimImageGroqService.plan_calls = 0
+    VisualClaimImageGroqService.verify_calls = 0
+    monkeypatch.setattr(
+        "app.services.pipeline.GroqFactCheckService",
+        VisualClaimImageGroqService,
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/image",
+            files={"image": ("poster.png", png_payload(), "image/png")},
+            data={"question": "Apakah klaim pada gambar ini benar?", "output_mode": "BOTH"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "image_relevance" not in [stage["key"] for stage in body["pipeline"]]
+    assert [stage["key"] for stage in body["pipeline"]] == [
+        "extraction",
+        "rulebook",
+        "planning",
+        "retrieval",
+        "verification",
+    ]
+    assert VisualClaimImageGroqService.plan_calls == 1
+    assert VisualClaimImageGroqService.verify_calls == 1
 
 
 def test_url_only_text_is_accepted_as_url_context() -> None:

@@ -178,22 +178,49 @@ export function VerificationResult({
             </div>
           </ResultSection>
 
-          <ResultSection eyebrow="Referensi" title="Sumber utama">
+          <ResultSection eyebrow="Referensi" title="Bukti dan sumber">
             {uniqueEvidence.length > 0 ? (
-              <ul className="narrative-sources">
-                {uniqueEvidence.slice(0, 4).map((item) => (
-                  <li key={item.id}>
+              <div className="evidence-list">
+                {uniqueEvidence.map((item) => (
+                  <article className="evidence-item" key={item.id}>
+                    <div className="evidence-item__meta">
+                      <span className={`stance stance--${item.stance.toLowerCase()}`}>
+                        {stanceLabels[item.stance]}
+                      </span>
+                      <span>{verificationLabels[item.verification_status]}</span>
+                    </div>
+                    <h4>{item.title}</h4>
+                    <p className="evidence-item__publisher">
+                      {item.publisher}
+                      {formatDate(item.published_at) ? ` Â· ${formatDate(item.published_at)}` : ""}
+                    </p>
+                    <p className="evidence-item__excerpt">{item.excerpt}</p>
                     <a href={item.url} target="_blank" rel="noreferrer">
-                      <span>{item.publisher}</span>
-                      <strong>{item.title}</strong>
+                      Buka sumber
                     </a>
-                  </li>
+                  </article>
                 ))}
-              </ul>
+              </div>
             ) : (
               <div className="empty-evidence">
                 <p>Belum ada bukti yang cukup untuk ditampilkan.</p>
               </div>
+            )}
+
+            {additionalSources.length > 0 && (
+              <details className="additional-sources">
+                <summary>Sumber tambahan ({additionalSources.length})</summary>
+                <ul>
+                  {additionalSources.map((source) => (
+                    <li key={source.url}>
+                      <a href={source.url} target="_blank" rel="noreferrer">
+                        <span>{source.publisher}</span>
+                        <strong>{source.title}</strong>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </ResultSection>
         </>

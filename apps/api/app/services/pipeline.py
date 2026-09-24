@@ -23,6 +23,7 @@ from app.schemas import (
     PlannerOutput,
     ResponsePresentation,
     RulebookResult,
+    RulebookTrace,
     RecommendedAction,
     SourceView,
     VerificationResponse,
@@ -229,6 +230,46 @@ class FactCheckPipeline:
                 duration_ms=extraction_ms + vision_ms,
             )
         )
+
+        if _is_non_checkable_image(case):
+            relevance_stage = PipelineStage(
+                key="image_relevance",
+                label="Cek kelayakan fact-check",
+                status="SKIPPED",
+                detail="Tidak ada klaim, teks, URL, pesan, dokumen, poster, atau konteks verifikasi yang terdeteksi.",
+                duration_ms=0,
+            )
+            stages.append(relevance_stage)
+            self.debug_traces.add_stage(
+                trace_id,
+                key="image_relevance",
+                label="Cek kelayakan fact-check",
+                status="SKIPPED",
+                duration_ms=0,
+                runtime="LOCAL_DETERMINISTIC",
+                input_data={"case": case},
+                output_data={
+                    "non_checkable": True,
+                    "reason": "Gambar tidak memuat klaim yang dapat diverifikasi.",
+                },
+                instruction={
+                    "version": "image-relevance.v1",
+                    "runtime": "LOCAL_DETERMINISTIC",
+                    "invariants": [
+                        "Gambar valid secara file belum tentu layak untuk fact-check.",
+                        "Jika tidak ada klaim yang dapat diperiksa, skip planner, retrieval, dan verifier.",
+                    ],
+                },
+            )
+            response = self._build_non_checkable_image_response(
+                request_id=request_id,
+                trace_id=trace_id,
+                input_summary=input_summary,
+                stages=stages,
+                output_mode=output_mode,
+            )
+            self.debug_traces.complete(trace_id, response)
+            return response
 
         return await self._verify_case(
             case=case,
@@ -918,6 +959,108 @@ class FactCheckPipeline:
             ),
             rulebook=rulebook.trace,
             pipeline=data["stages"],
+            presentation=ResponsePresentation(
+                requested_mode=output_mode,
+                structured=output_mode in {"STRUCTURED", "BOTH"},
+                narrative=narrative,
+            ),
+            disclaimer="Fact-check adalah dukungan keputusan, bukan jaminan. Verifikasi ulang untuk keputusan berisiko tinggi.",
+        )
+
+    def _build_non_checkable_image_response(
+        self,
+        *,
+        request_id: str,
+        trace_id: str,
+        input_summary: InputSummary,
+        stages: list[PipelineStage],
+        output_mode: OutputMode,
+    ) -> VerificationResponse:
+        recommended_actions = [
+            RecommendedAction(
+                code="UPLOAD_CHECKABLE_CONTENT",
+                title="Unggah bahan yang ingin diverifikasi",
+                detail="Coba unggah screenshot berita, pesan, caption, poster, atau dokumen yang ingin diperiksa.",
+            ),
+            RecommendedAction(
+                code="ADD_CONTEXT",
+                title="Tambahkan konteks",
+                detail="Jika gambar ini punya maksud tertentu, tuliskan pertanyaan atau klaim yang ingin dicek.",
+            ),
+            RecommendedAction(
+                code="USE_TEXT_INPUT",
+                title="Gunakan input teks",
+                detail="Jika klaimnya tidak tertulis jelas di gambar, tempelkan teks klaimnya agar bisa diperiksa.",
+            ),
+        ]
+        why = [
+            "Sistem tidak menemukan teks, klaim, URL, pesan, dokumen, poster, atau konteks yang dapat diverifikasi.",
+            "Gambar seperti foto umum belum cukup untuk menentukan benar atau salahnya suatu informasi.",
+        ]
+        uncertainty = (
+            "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa. "
+            "Coba unggah screenshot berita, pesan, caption, poster, atau dokumen yang ingin diverifikasi."
+        )
+        narrative = (
+            build_narrative_presentation(
+                verdict="UNVERIFIED",
+                risk_level="LOW",
+                headline="Gambar tidak memuat klaim yang bisa diperiksa",
+                why=why,
+                evidence=[],
+                evidence_sufficiency_label="Tidak ada klaim yang dapat diperiksa",
+                recommended_actions=recommended_actions,
+                uncertainty=uncertainty,
+                requires_human_review=False,
+            )
+            if output_mode in {"NARRATIVE", "BOTH"}
+            else None
+        )
+        return VerificationResponse(
+            request_id=request_id,
+            trace_id=trace_id,
+            status="COMPLETED",
+            mode="LIVE",
+            mode_notice=(
+                "Analisis live berhenti setelah OCR dan Vision karena gambar tidak memuat klaim "
+                "yang dapat diperiksa."
+            ),
+            input_summary=input_summary,
+            verdict="UNVERIFIED",
+            risk_level="LOW",
+            dimensions=AssessmentDimensions(
+                factual_status="UNVERIFIED",
+                source_authenticity="NOT_APPLICABLE",
+                sender_identity="NOT_APPLICABLE",
+                channel_status="NOT_APPLICABLE",
+                scam_risk="LOW",
+                content_authenticity="UNVERIFIED",
+            ),
+            headline="Gambar tidak memuat klaim yang bisa diperiksa",
+            evidence_sufficiency=0.0,
+            evidence_sufficiency_label="Tidak ada klaim yang dapat diperiksa",
+            what_checked=["Kelayakan gambar sebagai bahan fact-check"],
+            why=why,
+            evidence=[],
+            recommended_actions=recommended_actions,
+            sources=[],
+            uncertainty=uncertainty,
+            requires_human_review=False,
+            community_status="NOT_REQUIRED",
+            privacy_notice=(
+                "WaspadAI memproses raw input sementara dan mengirimkannya ke layanan model Groq "
+                "pada mode live; service WaspadAI tidak menyimpan atau mempublikasikannya otomatis."
+            ),
+            rulebook=RulebookTrace(
+                corpus_versions=list(self.rulebook.health.get("corpus_versions", [])),
+                retrieval_mode="SKIPPED_NON_CHECKABLE_IMAGE",
+                candidate_count=0,
+                selected_count=0,
+                forced_rule_ids=[],
+                cache_hit=False,
+                duration_ms=0,
+            ),
+            pipeline=stages,
             presentation=ResponsePresentation(
                 requested_mode=output_mode,
                 structured=output_mode in {"STRUCTURED", "BOTH"},
@@ -2025,6 +2168,40 @@ def _fallback_headline(verdict: str) -> str:
 
 def _unique(values: list[str]) -> list[str]:
     return list(dict.fromkeys(value for value in values if value))
+
+
+def _is_non_checkable_image(case: CaseContext) -> bool:
+    if case.input_type != "IMAGE":
+        return False
+    content_type = case.content_type.casefold().replace("-", "_").replace(" ", "_")
+    if any(
+        marker in content_type
+        for marker in (
+            "chat",
+            "message",
+            "screenshot",
+            "news",
+            "poster",
+            "document",
+            "invoice",
+            "receipt",
+            "social_media",
+        )
+    ):
+        return False
+    if case.possible_impersonation or case.urls:
+        return False
+    if any(claim.verifiable and claim.text.strip() for claim in case.seed_claims):
+        return False
+    text_tokens = _tokens(case.safe_text)
+    has_enough_text = len(text_tokens) >= 8 or len(case.safe_text.strip()) >= 40
+    if has_enough_text:
+        return False
+    non_document_photo = any(
+        marker in content_type
+        for marker in ("photo", "image", "other", "unknown", "landscape", "classroom", "room")
+    )
+    return non_document_photo or not content_type.strip()
 
 
 FORCED_ACTION_DETAILS = {

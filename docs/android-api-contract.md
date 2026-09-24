@@ -14,7 +14,7 @@ Android tidak memanggil WaspadAI secara langsung.
 Jalur yang berlaku:
 
 ```text
-Android Kotlin
+Android Kotlinko
   -> FastAPI aplikasi mobile / Product Backend
   -> Database Product, Supabase Auth, Storage, Community
   -> Internal API WaspadAI

@@ -84,6 +84,14 @@ Jika `page_context` dikirim, minimal satu dari `title`, `before`, atau `after`
 harus berisi nilai. `text` tetap menjadi klaim utama; `page_context` hanya
 dipakai sebagai konteks pendukung selected text.
 
+Pada endpoint image publik dan internal, gambar yang valid secara file tetapi
+tidak memuat klaim, teks, URL, pesan, dokumen, poster, atau konteks yang bisa
+diverifikasi tetap mengembalikan `200 COMPLETED`. Responsnya memakai
+`verdict=UNVERIFIED`, `risk_level=LOW`, `requires_human_review=false`,
+`evidence=[]`, `sources=[]`, dan headline `Gambar tidak memuat klaim yang bisa
+diperiksa`. Ini bukan error input; UI dapat menampilkan saran agar pengguna
+mengunggah screenshot berita/pesan/poster/dokumen atau memakai input teks.
+
 ## Internal API
 
 Header wajib:

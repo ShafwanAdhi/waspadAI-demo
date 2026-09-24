@@ -2824,3 +2824,26 @@ raw private database payload.
 `UNVERIFIED` atau membutuhkan human review. WaspadAI tetap stateless dan privacy
 notice menegaskan bahwa kebijakan penyimpanan history berada pada aplikasi
 pemanggil.
+
+## 76. Non-Checkable Image Fast Exit - IMPLEMENTED
+
+Sejak 2026-09-24, gambar yang valid secara file tetapi tidak memuat klaim,
+teks OCR bermakna, URL, pesan, dokumen, poster, atau konteks yang dapat
+diverifikasi tidak dipaksa masuk ke planner dan evidence retrieval. Setelah OCR
+dan Vision Understanding, backend menjalankan gate deterministik konservatif:
+jika tidak ada klaim verifiable, tidak ada URL, tidak ada indikasi impersonation,
+dan content type terlihat seperti foto umum, pipeline berhenti cepat.
+
+Respons tetap `200 COMPLETED` dengan kontrak `VerificationResponse` yang sama.
+Nilai publiknya dikunci ke `verdict=UNVERIFIED`, `risk_level=LOW`,
+`evidence=[]`, `sources=[]`, `requires_human_review=false`, dan
+`community_status=NOT_REQUIRED`. Headline dan narasi menjelaskan bahwa gambar
+belum memuat informasi atau klaim yang bisa diperiksa, lalu menyarankan pengguna
+mengunggah screenshot berita, pesan, caption, poster, dokumen, atau memakai input
+teks.
+
+Fast exit ini tidak menambah call Groq. Ia justru menghemat biaya karena hanya
+memakai OCR dan Vision yang sudah diperlukan untuk memahami gambar, kemudian
+melewati Rulebook RAG, planner, web/local/community retrieval, sufficiency normal,
+dan final verifier. Jika gambar memiliki klaim visual, URL, teks OCR cukup, atau
+indikasi scam/impersonation, sistem tetap lanjut ke pipeline normal.

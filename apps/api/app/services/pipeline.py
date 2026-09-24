@@ -17,6 +17,7 @@ from app.schemas import (
     Evidence,
     InputSummary,
     MediaMetadata,
+    NarrativePresentation,
     OutputMode,
     PipelineStage,
     PlannedClaim,
@@ -980,38 +981,24 @@ class FactCheckPipeline:
             RecommendedAction(
                 code="UPLOAD_CHECKABLE_CONTENT",
                 title="Unggah bahan yang ingin diverifikasi",
-                detail="Coba unggah screenshot berita, pesan, caption, poster, atau dokumen yang ingin diperiksa.",
-            ),
-            RecommendedAction(
-                code="ADD_CONTEXT",
-                title="Tambahkan konteks",
-                detail="Jika gambar ini punya maksud tertentu, tuliskan pertanyaan atau klaim yang ingin dicek.",
-            ),
-            RecommendedAction(
-                code="USE_TEXT_INPUT",
-                title="Gunakan input teks",
-                detail="Jika klaimnya tidak tertulis jelas di gambar, tempelkan teks klaimnya agar bisa diperiksa.",
+                detail="Gunakan screenshot berita, pesan, caption, poster, dokumen, atau tempelkan klaimnya sebagai teks.",
             ),
         ]
         why = [
             "Sistem tidak menemukan teks, klaim, URL, pesan, dokumen, poster, atau konteks yang dapat diverifikasi.",
-            "Gambar seperti foto umum belum cukup untuk menentukan benar atau salahnya suatu informasi.",
         ]
         uncertainty = (
-            "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa. "
-            "Coba unggah screenshot berita, pesan, caption, poster, atau dokumen yang ingin diverifikasi."
+            "Gambar ini belum memuat klaim yang bisa diperiksa."
         )
+        narrative_paragraphs = [
+            "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa.",
+            "Coba unggah screenshot berita, pesan, caption, poster, dokumen, atau gunakan input teks jika klaimnya tidak terlihat jelas.",
+        ]
         narrative = (
-            build_narrative_presentation(
-                verdict="UNVERIFIED",
-                risk_level="LOW",
-                headline="Gambar tidak memuat klaim yang bisa diperiksa",
-                why=why,
-                evidence=[],
-                evidence_sufficiency_label="Tidak ada klaim yang dapat diperiksa",
-                recommended_actions=recommended_actions,
-                uncertainty=uncertainty,
-                requires_human_review=False,
+            NarrativePresentation(
+                text="\n\n".join(narrative_paragraphs),
+                summary="Gambar belum memuat klaim yang bisa diperiksa.",
+                paragraphs=narrative_paragraphs,
             )
             if output_mode in {"NARRATIVE", "BOTH"}
             else None

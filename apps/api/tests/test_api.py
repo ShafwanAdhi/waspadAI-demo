@@ -319,9 +319,13 @@ def test_plain_photo_without_claim_gets_non_checkable_response(monkeypatch) -> N
     assert body["sources"] == []
     assert body["requires_human_review"] is False
     assert body["community_status"] == "NOT_REQUIRED"
-    assert "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa" in body["uncertainty"]
+    assert body["uncertainty"] == "Gambar ini belum memuat klaim yang bisa diperiksa."
     assert body["presentation"]["narrative"] is not None
-    assert "Gambar tidak memuat klaim" in body["presentation"]["narrative"]["text"]
+    assert body["presentation"]["narrative"]["paragraphs"] == [
+        "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa.",
+        "Coba unggah screenshot berita, pesan, caption, poster, dokumen, atau gunakan input teks jika klaimnya tidak terlihat jelas.",
+    ]
+    assert len(body["recommended_actions"]) == 1
     assert [stage["key"] for stage in body["pipeline"]] == ["extraction", "image_relevance"]
     assert NonCheckableImageGroqService.plan_calls == 0
     assert NonCheckableImageGroqService.verify_calls == 0

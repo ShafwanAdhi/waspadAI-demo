@@ -2738,18 +2738,19 @@ penjelasan natural yang lebih mirip jawaban chatbot.
 
 Mode naratif tidak menjalankan panggilan Groq tambahan. Backend memakai hasil
 kanonik yang sudah dibuat verifier, lalu presenter lokal menyusun paragraf dari
-`headline`, `verdict`, `risk_level`, `why`, `evidence`, `uncertainty`, dan
+`headline`, `verdict`, `risk_level`, `why`, `uncertainty`, dan
 `recommended_actions`. Karena itu, naratif tidak boleh mengubah verdict, risiko,
 bukti, sumber, maupun status `requires_human_review`; ia hanya mengubah cara
-penyajian.
+penyajian utama.
 
 Presenter naratif menggunakan kebijakan risk disclosure bertingkat. Risiko `LOW`
 dan `MEDIUM` tidak otomatis disebutkan di paragraf publik, sedangkan `HIGH` dan
 `CRITICAL` harus menghasilkan peringatan eksplisit dan safe action. Risiko sedang
 tetap tersedia di JSON untuk integrasi, tetapi hanya perlu diangkat ke narasi jika
 ada konsekuensi praktis yang jelas bagi pengguna. Label teknis seperti "skor kecukupan, bukan probabilitas
-kebenaran" tidak ditampilkan ke pengguna; naratif memakai bahasa publik seperti
-"bukti kuat", "bukti cukup", atau "bukti belum cukup untuk memastikan klaim".
+kebenaran" tidak ditampilkan ke pengguna pada naratif. Evidence strength,
+daftar bukti, nama sumber, dan link sumber tetap tersedia di field structured
+seperti `evidence`, `sources`, dan `evidence_sufficiency_label`.
 
 Untuk verdict `UNVERIFIED`, naratif harus menjaga bahasa non-final. Sistem boleh
 menjelaskan bahwa bukti belum cukup, tetapi tidak boleh menulis seolah klaim
@@ -2764,9 +2765,9 @@ aman untuk menunggu bukti yang lebih kuat. Normalisasi `MISLEADING` hanya boleh
 terjadi ketika ada claim assessment final yang cukup kuat pada sisi didukung dan
 dibantah; mixed raw evidence saja tidak cukup untuk mengubah verdict.
 
-Naratif juga membedakan kualitas sumber. Sumber resmi/primer, sumber cek fakta,
-sumber pendukung, dan konteks media sosial dikelompokkan agar unggahan sosial
-tidak terdengar setara dengan rilis resmi atau sumber primer.
+Naratif tidak mengulang daftar bukti, nama sumber, atau link sumber. UI harus
+menampilkan detail tersebut secara bertingkat dari structured fields agar teks
+chatbot tetap ringkas dan tidak menduplikasi kartu evidence.
 
 Frontend publik meminta `output_mode=BOTH` agar pengguna bisa berpindah antara
 mode poin-poin dan naratif melalui toggle tanpa melakukan request ulang. Endpoint

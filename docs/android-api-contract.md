@@ -107,7 +107,9 @@ pipeline AI berjalan dua kali akibat retry jaringan.
 - Android tidak mengirim `output_mode`.
 - Product Backend selalu meminta `output_mode=BOTH` ke WaspadAI.
 - Naratif adalah tampilan utama.
-- Bukti, sumber, tindakan, dimensi, dan detail lain ditampilkan bertingkat.
+- Naratif tidak mengulang daftar bukti, nama sumber, atau link sumber.
+- Bukti, sumber, tindakan, dimensi, dan detail lain ditampilkan bertingkat dari
+  field structured seperti `result.evidence` dan `result.sources`.
 
 ## 5. Product API Untuk Android
 
@@ -371,6 +373,8 @@ Aturan tampilan Android:
 - tampilkan `result.headline` sebagai ringkasan pendek;
 - tampilkan `result.evidence`, `result.sources`, `result.recommended_actions`,
   `result.uncertainty`, dan `result.dimensions` secara bertingkat;
+- jangan parse nama sumber atau link dari teks naratif; gunakan field
+  `result.evidence` dan `result.sources`;
 - jangan menjadikan `risk_level` sebagai elemen utama kecuali nilainya
   `HIGH` atau `CRITICAL`;
 - jangan menampilkan `pipeline` kepada pengguna umum kecuali mode debug aktif.

@@ -47,6 +47,10 @@ Mode naratif tidak menambah panggilan Groq. Teks naratif disusun secara lokal
 dari hasil verifikasi kanonik yang sudah ada, sehingga verdict, risiko, bukti,
 uncertainty, dan rekomendasi tetap sama dengan mode structured.
 
+Mode naratif tidak mengulang daftar bukti, nama sumber, atau link sumber.
+Client tetap menerima `evidence` dan `sources` pada response yang sama, lalu
+menampilkannya sebagai detail bertingkat bila dibutuhkan.
+
 Untuk menjaga hasil tetap ramah dibaca, mode naratif tidak selalu menampilkan
 tingkat risiko. Risiko `LOW` dan `MEDIUM` tidak otomatis disebutkan di teks
 naratif, sedangkan `HIGH` dan `CRITICAL` selalu muncul sebagai peringatan

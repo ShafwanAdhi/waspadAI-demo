@@ -49,6 +49,7 @@ def test_narrative_omits_low_risk_from_public_text() -> None:
     assert "Bukti resmi" in narrative.text
     assert "skor kecukupan" not in narrative.text
     assert "probabilitas" not in narrative.text
+    assert "Sistem membandingkan" not in narrative.text
 
 
 def test_narrative_shows_warning_for_high_and_critical_risk() -> None:
@@ -97,7 +98,7 @@ def test_narrative_omits_medium_risk_from_public_text() -> None:
     assert "dengan risiko" not in narrative.text
 
 
-def test_narrative_groups_social_sources_as_context() -> None:
+def test_narrative_omits_source_summary_from_public_text() -> None:
     official = _evidence().model_copy(update={"publisher": "Kemenpora", "url": "https://kemenpora.go.id/rilis"})
     social = _evidence().model_copy(
         update={
@@ -121,8 +122,9 @@ def test_narrative_groups_social_sources_as_context() -> None:
         requires_human_review=False,
     )
 
-    assert "sumber resmi/primer seperti Kemenpora" in narrative.text
-    assert "konteks media sosial seperti Instagram" in narrative.text
+    assert "Kemenpora" not in narrative.text
+    assert "Instagram" not in narrative.text
+    assert "Sistem membandingkan" not in narrative.text
 
 
 def test_unverified_narrative_uses_non_final_language() -> None:
@@ -139,5 +141,5 @@ def test_unverified_narrative_uses_non_final_language() -> None:
     )
 
     assert "terbantahkan" not in narrative.text
-    assert "belum boleh dianggap sebagai kesimpulan final" in narrative.text
-    assert "Bukti belum cukup untuk memastikan klaim" in narrative.text
+    assert "review manusia" in narrative.text
+    assert "Bukti belum lengkap" in narrative.text

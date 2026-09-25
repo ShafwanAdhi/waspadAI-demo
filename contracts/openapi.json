@@ -3,7 +3,7 @@
   "info": {
     "title": "WaspadAI API",
     "description": "API pemeriksaan multimodal berbasis bukti dan rulebook.",
-    "version": "0.7.0"
+    "version": "0.8.0"
   },
   "paths": {
     "/api/health": {
@@ -852,6 +852,107 @@
         ],
         "title": "NarrativePresentation"
       },
+      "OfficialReferralAdvice": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "NOT_REQUIRED",
+              "RECOMMENDED",
+              "URGENT"
+            ],
+            "title": "Status"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PREVENTION",
+                  "RECOVERY"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "reason_codes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "routes": {
+            "items": {
+              "$ref": "#/components/schemas/OfficialReferralRoute"
+            },
+            "type": "array",
+            "title": "Routes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "mode",
+          "reason_codes",
+          "routes"
+        ],
+        "title": "OfficialReferralAdvice"
+      },
+      "OfficialReferralRoute": {
+        "properties": {
+          "route_type": {
+            "type": "string",
+            "enum": [
+              "OFFICIAL_INSTITUTION",
+              "ACCOUNT_PROVIDER",
+              "FINANCIAL_PROVIDER",
+              "FINANCIAL_SCAM_REPORTING",
+              "PLATFORM_REPORTING",
+              "DEVICE_RECOVERY"
+            ],
+            "title": "Route Type"
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "PRIMARY",
+              "SECONDARY"
+            ],
+            "title": "Priority"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "route_type",
+          "priority",
+          "reason"
+        ],
+        "title": "OfficialReferralRoute"
+      },
       "PageContext": {
         "properties": {
           "title": {
@@ -1304,6 +1405,9 @@
             ],
             "title": "Community Status"
           },
+          "official_referral": {
+            "$ref": "#/components/schemas/OfficialReferralAdvice"
+          },
           "privacy_notice": {
             "type": "string",
             "title": "Privacy Notice"
@@ -1349,6 +1453,7 @@
           "uncertainty",
           "requires_human_review",
           "community_status",
+          "official_referral",
           "privacy_notice",
           "rulebook",
           "pipeline",

@@ -522,6 +522,27 @@ class ResponsePresentation(StrictModel):
     narrative: NarrativePresentation | None
 
 
+class OfficialReferralRoute(StrictModel):
+    route_type: Literal[
+        "OFFICIAL_INSTITUTION",
+        "ACCOUNT_PROVIDER",
+        "FINANCIAL_PROVIDER",
+        "FINANCIAL_SCAM_REPORTING",
+        "PLATFORM_REPORTING",
+        "DEVICE_RECOVERY",
+    ]
+    priority: Literal["PRIMARY", "SECONDARY"]
+    reason: str = Field(min_length=1, max_length=240)
+
+
+class OfficialReferralAdvice(StrictModel):
+    status: Literal["NOT_REQUIRED", "RECOMMENDED", "URGENT"]
+    mode: Literal["PREVENTION", "RECOVERY"] | None
+    reason_codes: list[str]
+    summary: str | None = Field(default=None, max_length=300)
+    routes: list[OfficialReferralRoute]
+
+
 class VerificationResponse(StrictModel):
     request_id: str
     trace_id: str
@@ -543,6 +564,7 @@ class VerificationResponse(StrictModel):
     uncertainty: str
     requires_human_review: bool
     community_status: Literal["NOT_REQUIRED", "ELIGIBLE_WITH_CONSENT"]
+    official_referral: OfficialReferralAdvice
     privacy_notice: str
     rulebook: RulebookTrace
     pipeline: list[PipelineStage]

@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="WaspadAI API",
-    version="0.7.0",
+    version="0.8.0",
     description="API pemeriksaan multimodal berbasis bukti dan rulebook.",
     docs_url="/api/docs",
     redoc_url=None,

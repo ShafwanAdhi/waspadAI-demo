@@ -92,7 +92,8 @@ def extract_case_signals(
         re.search(r"\b(?:rekening|wallet|dompet digital) (?:pribadi|personal)\b|\ba\.?n\.?\s+[A-Z]", text, re.I)
     )
 
-    user_action_state = _user_action_state(text)
+    observed_action_states = _user_action_states(text)
+    user_action_state = observed_action_states[0] if observed_action_states else "NO_ACTION"
     requested_actions: list[str] = []
     if secret_request:
         requested_actions.append("SHARE_SECRET")
@@ -183,7 +184,7 @@ def extract_case_signals(
         action_signals.append(
             _action_signal("SHARE_SECRET", secret, "NEGATED_WARNING", 0.92, case)
         )
-    observed_action = {
+    observed_action_map = {
         "LINK_CLICKED": ("OPEN_LINK", "LINK"),
         "CREDENTIAL_ENTERED": ("ENTER_CREDENTIAL", "CREDENTIAL"),
         "OTP_SHARED": ("SHARE_SECRET", "OTP"),
@@ -191,8 +192,12 @@ def extract_case_signals(
         "REMOTE_ACCESS_GRANTED": ("GRANT_REMOTE_ACCESS", "DEVICE_CONTROL"),
         "PAYMENT_SENT": ("MAKE_PAYMENT", "MONEY"),
         "ACCOUNT_TAKEOVER_SUSPECTED": ("LOSE_ACCOUNT_CONTROL", "ACCOUNT"),
-    }.get(user_action_state)
-    if observed_action:
+    }
+    for observed_action in [
+        observed_action_map[state]
+        for state in observed_action_states
+        if state in observed_action_map
+    ]:
         action_signals.append(
             _action_signal(*observed_action, "OBSERVED_ACTION", 0.88, case)
         )
@@ -267,19 +272,55 @@ def _positive_payment_request(clause: str) -> bool:
 
 
 def _user_action_state(text: str) -> str:
+    states = _user_action_states(text)
+    return states[0] if states else "NO_ACTION"
+
+
+def _user_action_states(text: str) -> list[str]:
     patterns = (
-        ("ACCOUNT_TAKEOVER_SUSPECTED", r"\b(?:akun saya diambil|kehilangan akses akun|akun dibajak)\b"),
-        ("PAYMENT_SENT", r"\b(?:sudah|telah) (?:transfer|bayar|mengirim uang)\b"),
-        ("REMOTE_ACCESS_GRANTED", r"\b(?:sudah|telah) (?:memberi|memberikan) (?:remote access|akses jarak jauh)\b"),
-        ("APK_INSTALLED", r"\b(?:sudah|telah) (?:install|instal|menginstal)\b"),
-        ("OTP_SHARED", r"\b(?:sudah|telah) (?:kirim|memberi|memberikan|bagikan) (?:kode )?otp\b"),
-        ("CREDENTIAL_ENTERED", r"\b(?:sudah|telah) (?:memasukkan|input|mengisi) (?:password|kata sandi|pin|credential)\b"),
-        ("LINK_CLICKED", r"\b(?:sudah|telah) (?:klik|membuka) (?:link|tautan)\b"),
+        (
+            "ACCOUNT_TAKEOVER_SUSPECTED",
+            r"\b(?:akun (?:saya|aku|kami)?\s*(?:diambil|dibajak|diretas|di-hack)|"
+            r"kehilangan akses akun|tidak bisa masuk akun|akun sudah dikuasai)\b",
+        ),
+        (
+            "PAYMENT_SENT",
+            r"\b(?:sudah|telah|terlanjur)\s+(?:transfer|bayar|membayar|mengirim uang|"
+            r"kirim uang|top up|topup|setor)\b",
+        ),
+        (
+            "REMOTE_ACCESS_GRANTED",
+            r"\b(?:sudah|telah|terlanjur)\s+(?:memberi|memberikan|mengizinkan|"
+            r"kasih|beri)\s+(?:remote access|akses jarak jauh|akses perangkat|"
+            r"akses layar|screen sharing|share screen)\b",
+        ),
+        (
+            "APK_INSTALLED",
+            r"\b(?:sudah|telah|terlanjur)\s+(?:install|instal|menginstal|pasang|"
+            r"memasang|download|unduh)\s+(?:apk|aplikasi|file)\b",
+        ),
+        (
+            "OTP_SHARED",
+            r"\b(?:sudah|telah|terlanjur)\s+(?:kirim|mengirim|memberi|memberikan|"
+            r"bagikan|share|menyebutkan|membagikan)\s+(?:kode\s+)?otp\b",
+        ),
+        (
+            "CREDENTIAL_ENTERED",
+            r"\b(?:sudah|telah|terlanjur)\s+(?:memasukkan|input|menginput|mengisi|"
+            r"isi|memberikan|kasih|share|bagikan)\s+(?:password|kata sandi|pin|"
+            r"credential|kredensial|username|email login)\b",
+        ),
+        (
+            "LINK_CLICKED",
+            r"\b(?:sudah|telah|terlanjur)\s+(?:klik|mengklik|membuka|buka|akses)"
+            r"\s+(?:link|tautan|url|situs|website)\b",
+        ),
     )
+    states: list[str] = []
     for state, pattern in patterns:
         if re.search(pattern, text, re.I):
-            return state
-    return "NO_ACTION"
+            states.append(state)
+    return states
 
 
 def _suspicious_link_domain(text: str, urls: list[str]) -> bool:

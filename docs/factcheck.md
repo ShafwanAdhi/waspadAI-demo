@@ -2836,14 +2836,45 @@ dan content type terlihat seperti foto umum, pipeline berhenti cepat.
 
 Respons tetap `200 COMPLETED` dengan kontrak `VerificationResponse` yang sama.
 Nilai publiknya dikunci ke `verdict=UNVERIFIED`, `risk_level=LOW`,
-`evidence=[]`, `sources=[]`, `requires_human_review=false`, dan
-`community_status=NOT_REQUIRED`. Headline dan narasi menjelaskan bahwa gambar
-belum memuat informasi atau klaim yang bisa diperiksa, lalu menyarankan pengguna
-mengunggah screenshot berita, pesan, caption, poster, dokumen, atau memakai input
-teks.
+`evidence=[]`, `sources=[]`, `why=[]`, `recommended_actions=[]`,
+`uncertainty=""`, `requires_human_review=false`, dan
+`community_status=NOT_REQUIRED`. Headline dan narasi dibuat minimal: sistem
+hanya menjelaskan bahwa gambar belum memuat informasi atau klaim yang bisa
+diperiksa, lalu menyarankan pengguna mengunggah screenshot berita, pesan,
+caption, poster, dokumen, atau memakai input teks. UI sebaiknya tidak
+menampilkan section analisis normal seperti "Mengapa berisiko", "Tindakan yang
+disarankan", "Status Risiko", atau "Ketidakpastian" untuk kondisi ini.
 
 Fast exit ini tidak menambah call Groq. Ia justru menghemat biaya karena hanya
 memakai OCR dan Vision yang sudah diperlukan untuk memahami gambar, kemudian
 melewati Rulebook RAG, planner, web/local/community retrieval, sufficiency normal,
 dan final verifier. Jika gambar memiliki klaim visual, URL, teks OCR cukup, atau
 indikasi scam/impersonation, sistem tetap lanjut ke pipeline normal.
+
+## 77. Official Referral Advice - IMPLEMENTED
+
+Sejak 2026-09-25, setiap `VerificationResponse` sukses memuat
+`official_referral`. Field ini adalah output deterministik lokal untuk membantu
+Product Backend/mobile mengarahkan pengguna ke kanal resmi tanpa menambah call
+Groq. Ia tidak mengubah verdict, risk level, evidence sufficiency,
+`requires_human_review`, atau `community_status`.
+
+Referral memiliki tiga status: `NOT_REQUIRED`, `RECOMMENDED`, dan `URGENT`.
+`RECOMMENDED` dipakai untuk pencegahan ketika ada sinyal scam/impersonation
+berisiko tinggi tetapi user belum terdeteksi melakukan tindakan sensitif.
+`URGENT` dipakai untuk recovery ketika signal extraction melihat user sudah
+melakukan tindakan seperti transfer, memasukkan kredensial, membagikan OTP,
+memasang APK, memberi remote access, atau kehilangan akses akun.
+
+WaspadAI tidak mengirim URL, nomor telepon, hotline, rekening, OTP, atau PII
+pada `official_referral`. Output hanya memuat `route_type`, `priority`,
+`reason_codes`, dan alasan singkat. Product Backend/mobile bertanggung jawab
+memetakan route seperti `FINANCIAL_PROVIDER`, `FINANCIAL_SCAM_REPORTING`,
+`ACCOUNT_PROVIDER`, `OFFICIAL_INSTITUTION`, `PLATFORM_REPORTING`, dan
+`DEVICE_RECOVERY` ke direktori kanal resmi yang sudah diverifikasi.
+
+Signal extraction kini mempertahankan beberapa observed user action pada
+`action_signals`, bukan hanya satu `user_action_state` utama. Ini penting untuk
+kasus campuran seperti user sudah klik link, memasukkan password, dan transfer;
+recovery referral harus melihat semua tindakan yang relevan. `user_action_state`
+tetap ada untuk kompatibilitas dan berisi state prioritas tertinggi.

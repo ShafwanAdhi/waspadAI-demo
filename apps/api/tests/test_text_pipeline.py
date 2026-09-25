@@ -11,7 +11,9 @@ from app.schemas import (
     RetrievalPlan,
     VerificationDecision,
 )
+from app.services.input_adapters import build_text_case
 from app.services.pipeline import FactCheckPipeline
+from app.services.signal_extraction import extract_case_signals
 
 
 class FakeGroqService:
@@ -202,3 +204,28 @@ def test_request_scoped_community_evidence_does_not_add_groq_calls():
     assert fake.plan_calls == 1
     assert fake.verify_calls == 1
     assert any(item.source_type == "community_verified" for item in response.evidence)
+
+
+def test_signal_extraction_preserves_multiple_observed_user_actions():
+    case, _ = build_text_case(
+        text=(
+            "Saya sudah klik link dari pesan bank palsu, sudah memasukkan password, "
+            "dan sudah transfer biaya pemulihan akun."
+        ),
+        question="Apa yang harus dilakukan?",
+        source_url=None,
+        sender_context="UNKNOWN_NUMBER",
+        max_urls=5,
+    )
+
+    signals = extract_case_signals(case)
+    observed = {
+        (item.action, item.object)
+        for item in signals.action_signals
+        if item.polarity == "OBSERVED_ACTION"
+    }
+
+    assert signals.user_action_state == "PAYMENT_SENT"
+    assert ("OPEN_LINK", "LINK") in observed
+    assert ("ENTER_CREDENTIAL", "CREDENTIAL") in observed
+    assert ("MAKE_PAYMENT", "MONEY") in observed

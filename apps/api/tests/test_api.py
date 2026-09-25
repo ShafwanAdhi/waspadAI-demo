@@ -275,6 +275,9 @@ def test_text_verification_can_return_narrative_presentation() -> None:
     assert body["presentation"]["structured"] is False
     assert "Hasil pemeriksaan:" in body["presentation"]["narrative"]["text"]
     assert body["headline"] in body["presentation"]["narrative"]["summary"]
+    assert body["official_referral"]["status"] == "RECOMMENDED"
+    assert body["official_referral"]["mode"] == "PREVENTION"
+    assert body["official_referral"]["routes"]
 
 
 def test_image_verification_can_return_both_presentations() -> None:
@@ -319,13 +322,22 @@ def test_plain_photo_without_claim_gets_non_checkable_response(monkeypatch) -> N
     assert body["sources"] == []
     assert body["requires_human_review"] is False
     assert body["community_status"] == "NOT_REQUIRED"
-    assert body["uncertainty"] == "Gambar ini belum memuat klaim yang bisa diperiksa."
+    assert body["official_referral"] == {
+        "status": "NOT_REQUIRED",
+        "mode": None,
+        "reason_codes": [],
+        "summary": None,
+        "routes": [],
+    }
+    assert body["why"] == []
+    assert body["recommended_actions"] == []
+    assert body["uncertainty"] == ""
+    assert body["disclaimer"] == ""
     assert body["presentation"]["narrative"] is not None
     assert body["presentation"]["narrative"]["paragraphs"] == [
         "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa.",
         "Coba unggah screenshot berita, pesan, caption, poster, dokumen, atau gunakan input teks jika klaimnya tidak terlihat jelas.",
     ]
-    assert len(body["recommended_actions"]) == 1
     assert [stage["key"] for stage in body["pipeline"]] == ["extraction", "image_relevance"]
     assert NonCheckableImageGroqService.plan_calls == 0
     assert NonCheckableImageGroqService.verify_calls == 0
@@ -360,11 +372,69 @@ def test_internal_image_without_claim_gets_same_non_checkable_response(
     assert body["headline"] == "Gambar tidak memuat klaim yang bisa diperiksa"
     assert body["evidence"] == []
     assert body["sources"] == []
+    assert body["why"] == []
+    assert body["recommended_actions"] == []
+    assert body["uncertainty"] == ""
+    assert body["disclaimer"] == ""
     assert body["requires_human_review"] is False
     assert body["community_status"] == "NOT_REQUIRED"
+    assert body["official_referral"]["status"] == "NOT_REQUIRED"
     assert [stage["key"] for stage in body["pipeline"]] == ["extraction", "image_relevance"]
     assert NonCheckableImageGroqService.plan_calls == 0
     assert NonCheckableImageGroqService.verify_calls == 0
+
+
+def test_official_referral_urgent_for_payment_sent_without_urls_or_pii() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/text",
+            json={
+                "text": (
+                    "Pesan mengaku dari bank meminta transfer biaya pemulihan akun. "
+                    "Saya sudah transfer Rp500.000 ke rekening yang disebutkan."
+                ),
+                "sender_context": "UNKNOWN_NUMBER",
+            },
+        )
+
+    assert response.status_code == 200
+    referral = response.json()["official_referral"]
+    assert referral["status"] == "URGENT"
+    assert referral["mode"] == "RECOVERY"
+    assert "USER_ALREADY_ACTED:PAYMENT_SENT" in referral["reason_codes"]
+    assert [route["route_type"] for route in referral["routes"]][:2] == [
+        "FINANCIAL_PROVIDER",
+        "FINANCIAL_SCAM_REPORTING",
+    ]
+    serialized = str(referral).casefold()
+    assert "http" not in serialized
+    assert "iasc.ojk.go.id" not in serialized
+    assert "500.000" not in serialized
+
+
+def test_official_referral_urgent_for_credentials_entered() -> None:
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/verify/text",
+            json={
+                "text": (
+                    "Saya mendapat pesan login ulang dari akun tidak dikenal dan "
+                    "sudah memasukkan password ke tautan yang diberikan."
+                ),
+                "sender_context": "UNKNOWN_NUMBER",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["risk_level"] == "CRITICAL"
+    assert body["official_referral"]["status"] == "URGENT"
+    assert body["official_referral"]["mode"] == "RECOVERY"
+    assert "USER_ALREADY_ACTED:CREDENTIAL_ENTERED" in body["official_referral"]["reason_codes"]
+    assert any(
+        route["route_type"] == "ACCOUNT_PROVIDER"
+        for route in body["official_referral"]["routes"]
+    )
 
 
 def test_image_with_visual_claim_still_uses_normal_pipeline(monkeypatch) -> None:

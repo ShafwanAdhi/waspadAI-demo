@@ -18,6 +18,8 @@ from app.schemas import (
     InputSummary,
     MediaMetadata,
     NarrativePresentation,
+    OfficialReferralAdvice,
+    OfficialReferralRoute,
     OutputMode,
     PipelineStage,
     PlannedClaim,
@@ -908,6 +910,7 @@ class FactCheckPipeline:
         sufficiency = decision.evidence_sufficiency
         evidence_view = evidence[:8]
         sufficiency_label = _sufficiency_label(sufficiency, decision, planner)
+        official_referral = _build_official_referral(case, signals, planner, decision)
         narrative = (
             build_narrative_presentation(
                 verdict=decision.overall_verdict,
@@ -951,6 +954,7 @@ class FactCheckPipeline:
                 if decision.overall_verdict == "UNVERIFIED" or decision.requires_human_review
                 else "NOT_REQUIRED"
             ),
+            official_referral=official_referral,
             privacy_notice=(
                 "WaspadAI memproses raw input sementara dan mengirimkannya ke layanan model Groq "
                 "pada mode live; service WaspadAI tidak menyimpan atau mempublikasikannya otomatis. "
@@ -977,19 +981,9 @@ class FactCheckPipeline:
         stages: list[PipelineStage],
         output_mode: OutputMode,
     ) -> VerificationResponse:
-        recommended_actions = [
-            RecommendedAction(
-                code="UPLOAD_CHECKABLE_CONTENT",
-                title="Unggah bahan yang ingin diverifikasi",
-                detail="Gunakan screenshot berita, pesan, caption, poster, dokumen, atau tempelkan klaimnya sebagai teks.",
-            ),
-        ]
-        why = [
-            "Sistem tidak menemukan teks, klaim, URL, pesan, dokumen, poster, atau konteks yang dapat diverifikasi.",
-        ]
-        uncertainty = (
-            "Gambar ini belum memuat klaim yang bisa diperiksa."
-        )
+        recommended_actions: list[RecommendedAction] = []
+        why: list[str] = []
+        uncertainty = ""
         narrative_paragraphs = [
             "Gambar ini belum memuat informasi atau klaim yang bisa diperiksa.",
             "Coba unggah screenshot berita, pesan, caption, poster, dokumen, atau gunakan input teks jika klaimnya tidak terlihat jelas.",
@@ -1034,6 +1028,7 @@ class FactCheckPipeline:
             uncertainty=uncertainty,
             requires_human_review=False,
             community_status="NOT_REQUIRED",
+            official_referral=_not_required_official_referral(),
             privacy_notice=(
                 "WaspadAI memproses raw input sementara dan mengirimkannya ke layanan model Groq "
                 "pada mode live; service WaspadAI tidak menyimpan atau mempublikasikannya otomatis."
@@ -1053,7 +1048,7 @@ class FactCheckPipeline:
                 structured=output_mode in {"STRUCTURED", "BOTH"},
                 narrative=narrative,
             ),
-            disclaimer="Fact-check adalah dukungan keputusan, bukan jaminan. Verifikasi ulang untuk keputusan berisiko tinggi.",
+            disclaimer="",
         )
 
 
@@ -1700,6 +1695,7 @@ def _enforce_scam_message_decision(
 
 def _scam_signal_strength(case: CaseContext, signals: CaseSignals) -> str:
     if signals.user_action_state in {
+        "CREDENTIAL_ENTERED",
         "OTP_SHARED",
         "APK_INSTALLED",
         "REMOTE_ACCESS_GRANTED",
@@ -1787,6 +1783,248 @@ def _scam_recommended_actions(signals: CaseSignals) -> list[RecommendedAction]:
         ]
     )
     return actions
+
+
+def _not_required_official_referral() -> OfficialReferralAdvice:
+    return OfficialReferralAdvice(
+        status="NOT_REQUIRED",
+        mode=None,
+        reason_codes=[],
+        summary=None,
+        routes=[],
+    )
+
+
+def _build_official_referral(
+    case: CaseContext,
+    signals: CaseSignals,
+    planner: PlannerOutput,
+    decision: VerificationDecision,
+) -> OfficialReferralAdvice:
+    observed_states = _observed_user_action_states(signals)
+    recovery_states = [
+        state
+        for state in observed_states
+        if state
+        in {
+            "CREDENTIAL_ENTERED",
+            "OTP_SHARED",
+            "APK_INSTALLED",
+            "REMOTE_ACCESS_GRANTED",
+            "PAYMENT_SENT",
+            "ACCOUNT_TAKEOVER_SUSPECTED",
+        }
+    ]
+    if recovery_states:
+        routes = _official_referral_routes_for_recovery(case, signals, recovery_states)
+        return OfficialReferralAdvice(
+            status="URGENT",
+            mode="RECOVERY",
+            reason_codes=[f"USER_ALREADY_ACTED:{state}" for state in recovery_states],
+            summary="Pengguna sudah melakukan tindakan sensitif; arahkan ke kanal pemulihan resmi.",
+            routes=routes,
+        )
+
+    scam_like = (
+        planner.classification == "SCAM_MESSAGE"
+        or bool(signals.attack_patterns)
+        or case.possible_impersonation
+    )
+    high_risk = decision.risk_level in {"HIGH", "CRITICAL"}
+    if scam_like and high_risk:
+        routes = _official_referral_routes_for_prevention(case, signals)
+        if routes:
+            return OfficialReferralAdvice(
+                status="RECOMMENDED",
+                mode="PREVENTION",
+                reason_codes=_prevention_reason_codes(case, signals),
+                summary="Ada sinyal penipuan atau impersonasi; verifikasi hanya melalui kanal resmi.",
+                routes=routes,
+            )
+    return _not_required_official_referral()
+
+
+def _observed_user_action_states(signals: CaseSignals) -> list[str]:
+    states: list[str] = []
+    for signal in signals.action_signals:
+        if signal.polarity != "OBSERVED_ACTION":
+            continue
+        state = {
+            ("OPEN_LINK", "LINK"): "LINK_CLICKED",
+            ("ENTER_CREDENTIAL", "CREDENTIAL"): "CREDENTIAL_ENTERED",
+            ("SHARE_SECRET", "OTP"): "OTP_SHARED",
+            ("INSTALL_OR_RUN", "APK"): "APK_INSTALLED",
+            ("GRANT_REMOTE_ACCESS", "DEVICE_CONTROL"): "REMOTE_ACCESS_GRANTED",
+            ("MAKE_PAYMENT", "MONEY"): "PAYMENT_SENT",
+            ("LOSE_ACCOUNT_CONTROL", "ACCOUNT"): "ACCOUNT_TAKEOVER_SUSPECTED",
+        }.get((signal.action, signal.object))
+        if state:
+            states.append(state)
+    if signals.user_action_state != "NO_ACTION":
+        states.append(signals.user_action_state)
+    return list(dict.fromkeys(states))
+
+
+def _official_referral_routes_for_recovery(
+    case: CaseContext,
+    signals: CaseSignals,
+    states: list[str],
+) -> list[OfficialReferralRoute]:
+    routes: list[OfficialReferralRoute] = []
+    if "PAYMENT_SENT" in states:
+        routes.append(
+            _official_route(
+                "FINANCIAL_PROVIDER",
+                "PRIMARY",
+                "Laporkan transaksi ke bank atau penyedia jasa pembayaran resmi.",
+            )
+        )
+        routes.append(
+            _official_route(
+                "FINANCIAL_SCAM_REPORTING",
+                "SECONDARY",
+                "Gunakan jalur pelaporan penipuan finansial resmi setelah bukti disiapkan.",
+            )
+        )
+    if any(state in states for state in ("OTP_SHARED", "CREDENTIAL_ENTERED", "ACCOUNT_TAKEOVER_SUSPECTED")):
+        primary_type = "FINANCIAL_PROVIDER" if _financial_context(case, signals) else "ACCOUNT_PROVIDER"
+        routes.append(
+            _official_route(
+                primary_type,
+                "PRIMARY",
+                "Amankan akun melalui penyedia resmi yang mengelola akun tersebut.",
+            )
+        )
+        if primary_type != "ACCOUNT_PROVIDER":
+            routes.append(
+                _official_route(
+                    "ACCOUNT_PROVIDER",
+                    "SECONDARY",
+                    "Ganti kredensial dan cabut sesi dari layanan akun terkait.",
+                )
+            )
+    if any(state in states for state in ("APK_INSTALLED", "REMOTE_ACCESS_GRANTED")):
+        routes.append(
+            _official_route(
+                "DEVICE_RECOVERY",
+                "PRIMARY",
+                "Lakukan pemulihan perangkat dan cabut izin aplikasi atau akses jarak jauh.",
+            )
+        )
+    return _dedupe_official_routes(routes)
+
+
+def _official_referral_routes_for_prevention(
+    case: CaseContext,
+    signals: CaseSignals,
+) -> list[OfficialReferralRoute]:
+    routes: list[OfficialReferralRoute] = []
+    if _financial_context(case, signals):
+        routes.append(
+            _official_route(
+                "FINANCIAL_PROVIDER",
+                "PRIMARY",
+                "Verifikasi instruksi pembayaran atau akun melalui penyedia finansial resmi.",
+            )
+        )
+    elif case.possible_impersonation or signals.authority:
+        routes.append(
+            _official_route(
+                "ACCOUNT_PROVIDER",
+                "PRIMARY",
+                "Verifikasi identitas pengirim melalui penyedia akun atau kanal resmi terkait.",
+            )
+        )
+    if signals.government_context:
+        routes.append(
+            _official_route(
+                "OFFICIAL_INSTITUTION",
+                "SECONDARY" if routes else "PRIMARY",
+                "Cek pengumuman atau prosedur melalui institusi resmi terkait.",
+            )
+        )
+    if signals.suspicious_executable_received or signals.remote_access_requested or signals.screen_share_requested:
+        routes.append(
+            _official_route(
+                "DEVICE_RECOVERY",
+                "SECONDARY" if routes else "PRIMARY",
+                "Jangan pasang aplikasi atau memberi akses perangkat sebelum diverifikasi.",
+            )
+        )
+    if case.platform or signals.channels:
+        routes.append(
+            _official_route(
+                "PLATFORM_REPORTING",
+                "SECONDARY" if routes else "PRIMARY",
+                "Laporkan akun atau pesan mencurigakan melalui fitur pelaporan platform.",
+            )
+        )
+    if signals.payment_requested:
+        routes.append(
+            _official_route(
+                "FINANCIAL_SCAM_REPORTING",
+                "SECONDARY",
+                "Gunakan jalur pelaporan penipuan finansial resmi bila ada permintaan transfer.",
+            )
+        )
+    return _dedupe_official_routes(routes)
+
+
+def _prevention_reason_codes(case: CaseContext, signals: CaseSignals) -> list[str]:
+    reason_codes: list[str] = []
+    if case.possible_impersonation or signals.authority:
+        reason_codes.append("POSSIBLE_IMPERSONATION")
+    if signals.secret_request_detected:
+        reason_codes.append("SECRET_REQUEST")
+    if signals.payment_requested:
+        reason_codes.append("PAYMENT_REQUEST")
+    if signals.suspicious_executable_received:
+        reason_codes.append("EXECUTABLE_REQUEST")
+    if signals.remote_access_requested or signals.screen_share_requested:
+        reason_codes.append("DEVICE_ACCESS_REQUEST")
+    if "suspicious_link_domain" in signals.attack_patterns:
+        reason_codes.append("SUSPICIOUS_LINK_DOMAIN")
+    return reason_codes or ["SCAM_PATTERN_DETECTED"]
+
+
+def _financial_context(case: CaseContext, signals: CaseSignals) -> bool:
+    text = " ".join((case.safe_text, case.summary, " ".join(case.entities))).casefold()
+    return bool(
+        signals.payment_requested
+        or signals.safe_account_transfer_requested
+        or re.search(
+            r"\b(?:bank|rekening|transfer|transaksi|kartu|atm|ewallet|e-wallet|"
+            r"dompet digital|dana|ovo|gopay|shopeepay|qris|pinjaman|kredit)\b",
+            text,
+            re.I,
+        )
+    )
+
+
+def _official_route(
+    route_type: str,
+    priority: str,
+    reason: str,
+) -> OfficialReferralRoute:
+    return OfficialReferralRoute(
+        route_type=route_type,  # type: ignore[arg-type]
+        priority=priority,  # type: ignore[arg-type]
+        reason=reason,
+    )
+
+
+def _dedupe_official_routes(routes: list[OfficialReferralRoute]) -> list[OfficialReferralRoute]:
+    output: list[OfficialReferralRoute] = []
+    seen: set[str] = set()
+    for route in routes:
+        if route.route_type in seen:
+            continue
+        output.append(route)
+        seen.add(route.route_type)
+    if output and not any(route.priority == "PRIMARY" for route in output):
+        first = output[0]
+        output[0] = first.model_copy(update={"priority": "PRIMARY"})
+    return output
 
 
 def _merge_front(first: list[str], second: list[str]) -> list[str]:
@@ -2218,7 +2456,7 @@ FORCED_ACTION_DETAILS = {
     ),
     "REPORT_TO_IASC": (
         "Laporkan melalui IASC",
-        "Gunakan portal resmi iasc.ojk.go.id untuk jalur penanganan finansial.",
+        "Gunakan jalur pelaporan penipuan finansial resmi; aplikasi pemanggil dapat menampilkan kanal terverifikasi.",
     ),
     "PRESERVE_EVIDENCE": (
         "Simpan bukti dengan aman",

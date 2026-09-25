@@ -255,6 +255,24 @@ Wrapper final yang diterima Android:
     "evidence_sufficiency_label": "Bukti belum cukup untuk memastikan klaim",
     "requires_human_review": true,
     "community_status": "ELIGIBLE_WITH_CONSENT",
+    "official_referral": {
+      "status": "URGENT",
+      "mode": "RECOVERY",
+      "reason_codes": ["USER_ALREADY_ACTED:PAYMENT_SENT"],
+      "summary": "Pengguna sudah melakukan tindakan sensitif; arahkan ke kanal pemulihan resmi.",
+      "routes": [
+        {
+          "route_type": "FINANCIAL_PROVIDER",
+          "priority": "PRIMARY",
+          "reason": "Laporkan transaksi ke bank atau penyedia jasa pembayaran resmi."
+        },
+        {
+          "route_type": "FINANCIAL_SCAM_REPORTING",
+          "priority": "SECONDARY",
+          "reason": "Gunakan jalur pelaporan penipuan finansial resmi setelah bukti disiapkan."
+        }
+      ]
+    },
     "privacy_notice": "Data ditangani sesuai kebijakan privasi WaspadAI.",
     "what_checked": [
       "Klaim utama pada pesan",
@@ -307,6 +325,45 @@ Wrapper final yang diterima Android:
   }
 }
 ```
+
+### 6.1 Official Referral dari WaspadAI
+
+`result.official_referral` wajib dianggap sebagai field respons sukses WaspadAI.
+Field ini tidak mengganti `verdict`, `risk_level`, `requires_human_review`, atau
+`community_status`; ia hanya memberi sinyal terstruktur agar Product Backend atau
+Android dapat menampilkan rujukan kanal resmi.
+
+WaspadAI tidak mengirim URL, nomor telepon, hotline, rekening, OTP, atau PII di
+field ini. Product Backend/mobile harus memetakan `route_type` ke direktori kanal
+resmi yang dikelola aplikasi, misalnya daftar bank, penyedia akun, platform, atau
+jalur pelaporan finansial yang sudah diverifikasi.
+
+Nilai status:
+
+| Status | Kapan dipakai |
+| --- | --- |
+| `NOT_REQUIRED` | Tidak ada referral resmi khusus. |
+| `RECOMMENDED` | Ada sinyal scam/impersonation berisiko tinggi, tetapi user belum terdeteksi melakukan tindakan sensitif. |
+| `URGENT` | User sudah transfer, memasukkan kredensial, membagikan OTP, memasang APK, memberi remote access, atau kehilangan akses akun. |
+
+Nilai mode:
+
+| Mode | Arti |
+| --- | --- |
+| `PREVENTION` | Bantu user memverifikasi kanal resmi sebelum bertindak. |
+| `RECOVERY` | Bantu user melakukan pemulihan setelah tindakan sensitif terjadi. |
+| `null` | Hanya untuk `status=NOT_REQUIRED`. |
+
+Route type yang dapat dikirim WaspadAI:
+
+| Route type | Tanggung jawab Product Backend/mobile |
+| --- | --- |
+| `OFFICIAL_INSTITUTION` | Map ke institusi resmi terkait konteks pemerintah/layanan publik. |
+| `ACCOUNT_PROVIDER` | Map ke kanal pemulihan akun layanan yang relevan. |
+| `FINANCIAL_PROVIDER` | Map ke bank/PJP/dompet digital resmi. |
+| `FINANCIAL_SCAM_REPORTING` | Map ke jalur pelaporan penipuan finansial resmi. |
+| `PLATFORM_REPORTING` | Map ke fitur pelaporan platform tempat pesan/konten muncul. |
+| `DEVICE_RECOVERY` | Map ke alur pemulihan perangkat, pencabutan izin, atau edukasi uninstall aman. |
 
 Aturan tampilan Android:
 
@@ -726,6 +783,8 @@ Saat dokumen ini dibuat:
 - endpoint WaspadAI text dan image sudah ada;
 - endpoint internal WaspadAI memakai `X-Waspadai-API-Key`;
 - `output_mode=BOTH` sudah didukung;
+- `official_referral` tersedia pada semua response sukses WaspadAI dan tidak
+  berisi URL/nomor/hotline; aplikasi pemanggil wajib melakukan mapping sendiri;
 - `community_evidence` dan `community_evidence_json` sudah didukung pada
   endpoint internal;
 - WaspadAI tidak mengakses database komunitas, Supabase, Storage, vote, atau
@@ -753,6 +812,8 @@ yang sama.
 - Kirim `Idempotency-Key` untuk setiap pemeriksaan.
 - Tampilkan naratif lebih dulu, lalu detail bertingkat.
 - Ambil jawaban utama dari `result.presentation.narrative.text`.
+- Gunakan `result.official_referral` untuk menampilkan CTA kanal resmi bila
+  statusnya `RECOMMENDED` atau `URGENT`.
 
 ## 17. Checklist Product Backend
 
@@ -770,3 +831,5 @@ yang sama.
 - Jangan gunakan vote atau hasil AI lama sebagai evidence.
 - Kirim community evidence hanya ke endpoint internal WaspadAI; endpoint publik
   tidak menerima field tersebut.
+- Jangan teruskan URL referral dari WaspadAI karena WaspadAI tidak mengirim URL
+  tersebut; lakukan mapping route resmi di Product Backend/mobile.

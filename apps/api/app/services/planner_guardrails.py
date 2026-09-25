@@ -347,6 +347,7 @@ def _deterministic_risk(signals: CaseSignals) -> str:
         and (signals.urgency or signals.threat or suspicious_link)
     )
     if signals.user_action_state in {
+        "CREDENTIAL_ENTERED",
         "OTP_SHARED", "APK_INSTALLED", "REMOTE_ACCESS_GRANTED",
         "PAYMENT_SENT", "ACCOUNT_TAKEOVER_SUSPECTED",
     }:

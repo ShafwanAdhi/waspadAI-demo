@@ -88,9 +88,13 @@ Pada endpoint image publik dan internal, gambar yang valid secara file tetapi
 tidak memuat klaim, teks, URL, pesan, dokumen, poster, atau konteks yang bisa
 diverifikasi tetap mengembalikan `200 COMPLETED`. Responsnya memakai
 `verdict=UNVERIFIED`, `risk_level=LOW`, `requires_human_review=false`,
-`evidence=[]`, `sources=[]`, dan headline `Gambar tidak memuat klaim yang bisa
-diperiksa`. Ini bukan error input; UI dapat menampilkan saran agar pengguna
-mengunggah screenshot berita/pesan/poster/dokumen atau memakai input teks.
+`evidence=[]`, `sources=[]`, `why=[]`, `recommended_actions=[]`,
+`uncertainty=""`, `official_referral.status=NOT_REQUIRED`, dan headline
+`Gambar tidak memuat klaim yang bisa diperiksa`.
+Ini bukan error input; UI sebaiknya hanya menampilkan headline dan
+`presentation.narrative.paragraphs`. Untuk kondisi ini, jangan tampilkan section
+analisis normal seperti "Mengapa berisiko", "Tindakan yang disarankan",
+"Status Risiko", atau "Ketidakpastian".
 
 ## Internal API
 
@@ -175,6 +179,7 @@ yang relevan.
 | `sources` | Daftar sumber yang bisa ditampilkan ke pengguna |
 | `recommended_actions` | Saran tindakan untuk pengguna |
 | `requires_human_review` | `true` jika bukti belum cukup atau kasus perlu dicek manual |
+| `official_referral` | Instruksi terstruktur untuk Product Backend/mobile agar mengarahkan pengguna ke kanal resmi yang dipetakan di sisi aplikasi pemanggil |
 | `presentation.requested_mode` | Mode output yang diminta client: `STRUCTURED`, `NARRATIVE`, atau `BOTH` |
 | `presentation.narrative` | Teks naratif lokal; bernilai `null` jika mode `STRUCTURED` |
 
@@ -183,6 +188,25 @@ Catatan keputusan: `verdict`, `risk_level`, `evidence_sufficiency`, dan
 bukti di bawah threshold membuat response menjadi `UNVERIFIED` dan
 `requires_human_review=true`. Risiko `MEDIUM` tetap tersedia di JSON, tetapi mode
 naratif hanya menampilkan peringatan eksplisit untuk `HIGH` dan `CRITICAL`.
+
+`official_referral` juga merupakan sumbu terpisah. Field ini tidak mengubah
+truth verdict, tidak mengganti `requires_human_review`, dan tidak berisi URL,
+nomor telepon, hotline, OTP, nomor rekening, atau PII. WaspadAI hanya mengirim
+`route_type`, `priority`, dan alasan singkat; Product Backend/mobile harus
+memetakan route tersebut ke direktori kanal resmi yang sudah diverifikasi.
+
+Nilai `official_referral.status`:
+
+| Status | Arti |
+| --- | --- |
+| `NOT_REQUIRED` | Tidak ada referral resmi khusus yang perlu ditampilkan. |
+| `RECOMMENDED` | Ada sinyal scam/impersonation berisiko tinggi sebelum user bertindak; tampilkan verifikasi kanal resmi sebagai pencegahan. |
+| `URGENT` | User sudah melakukan tindakan sensitif seperti transfer, memasukkan kredensial, membagikan OTP, memasang APK, memberi remote access, atau kehilangan akun; arahkan ke alur recovery resmi. |
+
+Nilai `official_referral.mode` adalah `PREVENTION`, `RECOVERY`, atau `null`
+jika `status=NOT_REQUIRED`. Route yang mungkin dikirim: `OFFICIAL_INSTITUTION`,
+`ACCOUNT_PROVIDER`, `FINANCIAL_PROVIDER`, `FINANCIAL_SCAM_REPORTING`,
+`PLATFORM_REPORTING`, dan `DEVICE_RECOVERY`.
 
 ## Contoh JSON response produksi
 
@@ -206,7 +230,8 @@ Klaim didukung:
   "evidence": [{"publisher": "Olympics", "title": "Paris 2024 opening ceremony information", "url": "https://olympics.com/example", "stance": "SUPPORTS", "verification_status": "VERIFIED"}],
   "sources": [{"publisher": "Olympics", "title": "Paris 2024 opening ceremony information", "url": "https://olympics.com/example"}],
   "recommended_actions": [{"title": "Bagikan dengan konteks", "detail": "Sertakan sumber resmi saat meneruskan informasi."}],
-  "requires_human_review": false
+  "requires_human_review": false,
+  "official_referral": {"status": "NOT_REQUIRED", "mode": null, "reason_codes": [], "summary": null, "routes": []}
 }
 ```
 
@@ -227,7 +252,8 @@ Klaim ditolak:
   "evidence": [{"publisher": "FIFA", "title": "ASEAN Cup information", "url": "https://www.fifa.com/example", "stance": "REFUTES", "verification_status": "VERIFIED"}],
   "sources": [{"publisher": "FIFA", "title": "ASEAN Cup information", "url": "https://www.fifa.com/example"}],
   "recommended_actions": [{"title": "Jangan teruskan klaim", "detail": "Tunggu konfirmasi dari sumber resmi sebelum membagikan."}],
-  "requires_human_review": false
+  "requires_human_review": false,
+  "official_referral": {"status": "NOT_REQUIRED", "mode": null, "reason_codes": [], "summary": null, "routes": []}
 }
 ```
 
@@ -248,7 +274,8 @@ UNVERIFIED:
   "evidence": [],
   "sources": [],
   "recommended_actions": [{"title": "Tahan dulu", "detail": "Jangan jadikan informasi ini dasar keputusan penting."}],
-  "requires_human_review": true
+  "requires_human_review": true,
+  "official_referral": {"status": "NOT_REQUIRED", "mode": null, "reason_codes": [], "summary": null, "routes": []}
 }
 ```
 
@@ -269,7 +296,17 @@ Risiko CRITICAL:
   "evidence": [{"publisher": "OJK", "title": "Peringatan penipuan permintaan OTP", "url": "https://ojk.go.id/example", "stance": "CONTEXT", "verification_status": "VERIFIED"}],
   "sources": [{"publisher": "OJK", "title": "Peringatan penipuan permintaan OTP", "url": "https://ojk.go.id/example"}],
   "recommended_actions": [{"title": "Jangan kirim OTP", "detail": "Putus komunikasi dan hubungi kanal resmi lembaga terkait."}],
-  "requires_human_review": false
+  "requires_human_review": false,
+  "official_referral": {
+    "status": "RECOMMENDED",
+    "mode": "PREVENTION",
+    "reason_codes": ["POSSIBLE_IMPERSONATION", "SECRET_REQUEST"],
+    "summary": "Ada sinyal penipuan atau impersonasi; verifikasi hanya melalui kanal resmi.",
+    "routes": [
+      {"route_type": "FINANCIAL_PROVIDER", "priority": "PRIMARY", "reason": "Verifikasi instruksi pembayaran atau akun melalui penyedia finansial resmi."},
+      {"route_type": "PLATFORM_REPORTING", "priority": "SECONDARY", "reason": "Laporkan akun atau pesan mencurigakan melalui fitur pelaporan platform."}
+    ]
+  }
 }
 ```
 
@@ -290,7 +327,17 @@ Requires human review:
   "evidence": [],
   "sources": [],
   "recommended_actions": [{"title": "Verifikasi ke pihak terkait", "detail": "Cari kanal resmi atau narasumber primer sebelum mengambil tindakan."}],
-  "requires_human_review": true
+  "requires_human_review": true,
+  "official_referral": {
+    "status": "URGENT",
+    "mode": "RECOVERY",
+    "reason_codes": ["USER_ALREADY_ACTED:PAYMENT_SENT"],
+    "summary": "Pengguna sudah melakukan tindakan sensitif; arahkan ke kanal pemulihan resmi.",
+    "routes": [
+      {"route_type": "FINANCIAL_PROVIDER", "priority": "PRIMARY", "reason": "Laporkan transaksi ke bank atau penyedia jasa pembayaran resmi."},
+      {"route_type": "FINANCIAL_SCAM_REPORTING", "priority": "SECONDARY", "reason": "Gunakan jalur pelaporan penipuan finansial resmi setelah bukti disiapkan."}
+    ]
+  }
 }
 ```
 

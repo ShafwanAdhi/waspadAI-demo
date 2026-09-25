@@ -327,6 +327,37 @@ export interface components {
             /** Paragraphs */
             paragraphs: string[];
         };
+        /** OfficialReferralAdvice */
+        OfficialReferralAdvice: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "NOT_REQUIRED" | "RECOMMENDED" | "URGENT";
+            /** Mode */
+            mode: ("PREVENTION" | "RECOVERY") | null;
+            /** Reason Codes */
+            reason_codes: string[];
+            /** Summary */
+            summary?: string | null;
+            /** Routes */
+            routes: components["schemas"]["OfficialReferralRoute"][];
+        };
+        /** OfficialReferralRoute */
+        OfficialReferralRoute: {
+            /**
+             * Route Type
+             * @enum {string}
+             */
+            route_type: "OFFICIAL_INSTITUTION" | "ACCOUNT_PROVIDER" | "FINANCIAL_PROVIDER" | "FINANCIAL_SCAM_REPORTING" | "PLATFORM_REPORTING" | "DEVICE_RECOVERY";
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "PRIMARY" | "SECONDARY";
+            /** Reason */
+            reason: string;
+        };
         /** PageContext */
         PageContext: {
             /** Title */
@@ -493,6 +524,7 @@ export interface components {
              * @enum {string}
              */
             community_status: "NOT_REQUIRED" | "ELIGIBLE_WITH_CONSENT";
+            official_referral: components["schemas"]["OfficialReferralAdvice"];
             /** Privacy Notice */
             privacy_notice: string;
             rulebook: components["schemas"]["RulebookTrace"];
